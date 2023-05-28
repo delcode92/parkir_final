@@ -1,9 +1,11 @@
-import sys,cv2,os, json, logging
+import sys,cv2,os, json, logging, re
 from framework import *
 # from kasir_ipcam import *
 from _thread import start_new_thread
 from configparser import ConfigParser
 from PyQt5.QtWidgets import QDialog
+from datetime import datetime
+from time import sleep
 
 class ClickableLabel(QLabel):
     def __init__(self, text):
@@ -15,6 +17,10 @@ class ClickableLabel(QLabel):
     clicked = pyqtSignal()
 
 class Main(Util, View):
+    no_pos = ""
+    kd_shift = ""
+    kasir_uname = ""
+
     def __init__(self) -> None:
         # 1. initialize important property & method from all parents
         # exampel : in Components Class --> self.components = {}
@@ -29,7 +35,6 @@ class Main(Util, View):
         self.mdi = None
         self.app_stat = False
         self.hidden_id = -1 # hidden id
-
         # steps
         
         # create thread for connect to server
@@ -259,7 +264,7 @@ class Main(Util, View):
                 case "kasir":
                     
                     res = self.exec_query("select * from kasir where id="+id, "select")
-
+                    shift = res[0][8]
                     components = [      {
                                             "name":"lbl_add_nik",
                                             "category":"label",
@@ -340,9 +345,21 @@ class Main(Util, View):
                                         },
                                         {
                                             "name":"add_nmr_pos",
-                                            "category":"lineEdit",
+                                            "category":"lineEditInt",
                                             "text":res[0][7],
                                             "style":self.primary_input
+                                        },
+                                        {
+                                            "name":"lbl_add_shift",
+                                            "category":"label",
+                                            "text": "Shift",
+                                            "style":self.primary_lbl + margin_top
+                                        },
+                                        {
+                                            "name":"add_nmr_shift",
+                                            "category":"comboBox",
+                                            "items":["shift-1", "shift-2", "shift-3", "shift-4", "shift-5"],
+                                            "style":self.primary_combobox + "background:none; color:#000;"
                                         },
                                         {
                                             "name":"btn_add_kasir",
@@ -820,7 +837,10 @@ class Main(Util, View):
             if form_type.lower() == "tarif":
                 self.check_tarif_type(tipe_tarif)
                 # print("==> tipe tarif: ", tipe_tarif)
-
+            
+            elif form_type.lower() == "kasir":
+                self.components['add_nmr_shift'].setCurrentText(shift)
+               
             self.win.show()
     
     
@@ -880,18 +900,216 @@ class Main(Util, View):
 
     def findVoucher(self):
         print("search voucher status ... ")
-
-    def PopUpReportUser(self):
-
-        dlg = QMessageBox(self.window)
-        dlg.setWindowTitle( "test title" )
-        dlg.setLayout(QVBoxLayout())
-        label = QLabel("This is a popup window")
-        dlg.layout().addWidget(label)
-
-        # dlg.setText( msg )
-        # dlg.setIcon(QMessageBox.Information)
+    
+   
+    def lostTicket(self):
         
+        import psycopg2, serial, time
+
+        class PopupWindow(QDialog):
+            
+            def __init__(self, query):
+                # super().__init__(parent)
+                super().__init__()
+                
+                self.resize(400, 350)
+                self.setContentsMargins(15,15,15,15)
+
+                # self.parentWidget().setStyleSheet("margin: 8px;")
+                # self.setStyleSheet("margin: 8px;")
+                self.connect_to_postgresql()
+
+                layout = QVBoxLayout()
+                self.inpt_nopol = QLineEdit()
+                self.jns_kendaraan = QComboBox()
+                stat = QLabel("LOST TICKET")
+                self.tarif = QLabel("...")
+                nopol = QLabel("NOPOL:")
+                jns_kend_lbl = QLabel("JENIS KENDARAAN:")
+                stat_lbl = QLabel("STATUS:")
+                tarif_lbl = QLabel("TARIF(Rp):")
+
+                css = "margin-top:15px; font-size:13px; font-weight:500;"
+
+                self.inpt_nopol.setStyleSheet("font-weight:500; font-size: 13px; height: 35px;")
+                self.jns_kendaraan.setStyleSheet("font-weight:500; font-size: 13px; height: 35px;")
+                nopol.setStyleSheet("font-weight:500;")
+                jns_kend_lbl.setStyleSheet(css)
+                stat_lbl.setStyleSheet(css)
+                tarif_lbl.setStyleSheet(css)
+
+                stat.setStyleSheet("height: 45px; padding:8px; font-weight: 600; font-size:16px; background:#ffeaa7;")
+                self.tarif.setStyleSheet("height: 45px; padding:8px; font-weight: 600; font-size:16px; background:#ffeaa7;")
+                # list kendaraan
+                list_kendaraan = ["--"]
+                for i in range( len(query) ):
+                    list_kendaraan.append(query[i][0].lower())
+
+                self.jns_kendaraan.addItems( list_kendaraan )
+
+                layout.addWidget( nopol )
+                layout.addWidget(self.inpt_nopol)
+                
+
+                layout.addWidget( jns_kend_lbl )
+                layout.addWidget(self.jns_kendaraan)
+                
+                layout.addWidget(stat_lbl)
+                layout.addWidget(stat)
+               
+                layout.addWidget(tarif_lbl)
+                layout.addWidget(self.tarif)
+                
+                layout.addStretch(1)
+
+                # binder
+                EventBinder(self.inpt_nopol, self.nopolEnter)
+                self.jns_kendaraan.activated.connect(self.changeVehicle)
+
+                self.setLayout(layout)
+                self.setWindowModality(Qt.ApplicationModal)
+                self.setWindowTitle("Lost Ticket")
+            
+            def getPath(self,fileName):
+                path = os.path.dirname(os.path.realpath(__file__))
+                
+                return '/'.join([path, fileName])
+    
+            def connect_to_postgresql(self):
+                try:
+                    ini = self.getPath("app.ini")
+                    
+                    configur = ConfigParser()
+                    configur.read(ini)
+                    
+                    conn = psycopg2.connect(
+                        database=configur["db"]["db_name"], user=configur["db"]["username"], password=configur["db"]["password"], host=configur["db"]["host"], port= configur["db"]["port"]
+                    )
+                    conn.autocommit = True
+                    self.db_cursor = conn.cursor()
+
+                except Exception as e:
+                    print( str(e) )    
+
+            def exec_query(self, query, type=""):
+        
+                try:
+                    self.db_cursor.execute(query)
+                    print("\nsuccess execute query")
+
+                    if type.lower() == "":    
+                        return True
+
+                except Exception as e:
+                    print("\nexecute query fail")
+                    print( str(e) )
+                    
+                if type.lower() =="select":
+                    data = self.db_cursor.fetchall()
+                    return data
+                
+                elif type.lower() =="cols_res":
+                    cols = [desc[0] for desc in self.db_cursor.description]
+                    data = self.db_cursor.fetchall()
+                    return cols,data
+
+            def nopolEnter(self):
+                # check if nopol valid ?
+                pattern1 = r'^\D+\s+\d{1,4}\s*\D*$'
+                pattern2 = r'^\D+\d{1,4}\s*\D*$'
+
+                match1 = re.match(pattern1, self.inpt_nopol.text())
+                match2 = re.match(pattern2, self.inpt_nopol.text())
+
+                if match1 or match2:
+
+                    # check if all field is filled
+                    if self.inpt_nopol.text() != "" and self.jns_kendaraan.currentText() != "--":
+                        self.setPay()
+
+                    elif self.inpt_nopol.text() != "" and self.jns_kendaraan.currentText() == "--":
+                        self.focusDropDown()
+                else:
+                    dlg = QMessageBox()
+            
+                    dlg.setWindowTitle("Alert")
+                    dlg.setText("Nopol Tidak Valid!")
+                    dlg.setIcon(QMessageBox.Information)
+                    dlg.exec()
+
+            def setPay(self):
+                # logic setpay
+                date_now = datetime.now()
+                date_now = date_now.strftime("%Y-%m-%d %H:%M:%S")
+                
+                q = self.exec_query(f"""insert into karcis (
+                    barcode, gate, 
+                    status_parkir, jenis_kendaraan, 
+                    date_keluar, tarif, nopol, 
+                    kd_shift, jns_transaksi, 
+                    images_path_keluar, lost_ticket) 
+                    values('000000', '{Main.no_pos}', true, 
+                    '{self.jns_kendaraan.currentText()}', 
+                    '{date_now}', {int(self.denda)}, 
+                    '{self.inpt_nopol.text()}', '{Main.kd_shift}', 'casual', '[IMG_PATH_KELUAR]', true  )""")
+                
+                arduino = serial.Serial(port='COM4', baudrate=115200, timeout=.1)
+
+                # open gate
+                while True:
+                    arduino.write(bytes("1", 'utf-8'))
+                    data = arduino.readline()
+
+                    n = len( data.decode('utf-8') )
+                    if n > 0 : break;
+                    time.sleep(0.01)
+
+
+                print("from setpay: ==> buka gate")
+                
+                # rest form
+                self.inpt_nopol.setText("")
+                self.jns_kendaraan.setCurrentIndex(0)
+                self.tarif.setText("...")
+            
+            def getPrice(self):
+                """ get price from lost ticket """
+                
+                jns_kendaraan = self.jns_kendaraan.currentText().lower()
+                q_denda = self.exec_query(f"select denda from tarif where jns_kendaraan='{jns_kendaraan}'", "select")
+                self.denda = str( q_denda[0][0] )
+                self.tarif.setText(self.denda)
+
+            def changeVehicle(self):
+                self.getPrice()
+                self.inpt_nopol.setFocus()
+            
+            def focusDropDown(self):
+                self.jns_kendaraan.setFocus()
+                self.jns_kendaraan.showPopup()
+
+            def keyPressEvent(self, event):
+                if event.key() == Qt.Key_Escape:
+                    self.close()
+        
+        self.q_kendaraan = self.exec_query(f"select jns_kendaraan from tarif", "select")
+        popup_window = PopupWindow(self.q_kendaraan)
+        popup_window.exec_()
+    
+    def Help(self):
+        dlg = QMessageBox(self.window)
+        dlg.setWindowTitle( "Keterangan Shortcut" )
+        
+        dlg.setText(
+        """
+        CTRL + h ==> HELP  \n\n
+        CTRL + t ==> Barcode Focus \n\n
+        CTRL + e ==> LOGOUT \n\n
+        CTRL + o ==> Open Gate(darurat) \n\n
+        CTRL + l ==> Lost Ticket
+        """)
+        
+        dlg.setStyleSheet("QLabel{margin-bottom:20px; margin-top: 20px; font-weight: 600; font-size: 13px;}");
         dlg.exec()
 
 
@@ -918,13 +1136,21 @@ class Main(Util, View):
         elif command=="save": #laporan user bermasalah
             shortcut.activated.connect( self.setReport )
         
-        elif command=="popup-user-bermasalah":
-            shortcut.activated.connect( self.PopUpReportUser )
+        elif command=="lost-ticket":
+            shortcut.activated.connect( self.lostTicket )
+        
+        elif command=="logout":
+            shortcut.activated.connect( self.kasirLogout )
+        
+        elif command=="help":
+            shortcut.activated.connect( self.Help )
             
         elif command=="open-gate":
             shortcut.activated.connect( self.openGate )
         elif command=="search-voucher":
             shortcut.activated.connect( self.findVoucher )
+    
+
 
     def setColsStretch(self, table, cols):
         header = table.horizontalHeader()
@@ -1428,9 +1654,9 @@ class Main(Util, View):
                 # create table widget
 
                 # fetch data from DB
-                query = self.exec_query("SELECT id, nik, nama, hp, alamat, jm_masuk, jm_keluar, no_pos FROM kasir", "SELECT")
+                query = self.exec_query("SELECT id, nik, nama, hp, alamat, jm_masuk, jm_keluar, no_pos, shift FROM kasir", "SELECT")
                 rows_count = len(query)
-                cols = 8
+                cols = 9
 
                 self.kasir_table.resizeRowsToContents()
                 self.kasir_table.horizontalHeader().setStretchLastSection(True)
@@ -1438,7 +1664,7 @@ class Main(Util, View):
                 self.kasir_table.setRowCount(rows_count)
                 self.kasir_table.setColumnCount(cols)
 
-                self.kasir_table.setHorizontalHeaderLabels(["id", "NIK", "Nama", "HP", "Alamat", "Jam Masuk", "Jam Kel", "POS/GATE"])
+                self.kasir_table.setHorizontalHeaderLabels(["id", "NIK", "Nama", "HP", "Alamat", "Jam Masuk", "Jam Kel", "POS/GATE", "SHIFT"])
                 self.kasir_table.setStyleSheet(View.table_style)
 
                 self.kasir_table.horizontalHeader().setDefaultAlignment(Qt.AlignLeft)
@@ -1475,7 +1701,7 @@ class Main(Util, View):
                                         "name":"lbl_add_nama",
                                         "category":"label",
                                         "text": "Nama",
-                                        "style":self.primary_lbl + margin_top
+                                        "style":self.primary_lbl + "margin-top:15px;"
                                     },
                                     {
                                         "name":"add_nama",
@@ -1486,7 +1712,7 @@ class Main(Util, View):
                                         "name":"lbl_add_hp",
                                         "category":"label",
                                         "text": "Nomor HP",
-                                        "style":self.primary_lbl + margin_top
+                                        "style":self.primary_lbl + "margin-top:15px;"
                                     },
                                     {
                                         "name":"add_hp",
@@ -1497,7 +1723,7 @@ class Main(Util, View):
                                         "name":"lbl_add_alamat",
                                         "category":"label",
                                         "text": "Alamat",
-                                        "style":self.primary_lbl + margin_top
+                                        "style":self.primary_lbl + "margin-top:15px;"
                                     },
                                     {
                                         "name":"add_alamat",
@@ -1508,7 +1734,7 @@ class Main(Util, View):
                                         "name":"lbl_add_jam_masuk",
                                         "category":"label",
                                         "text": "Jam Masuk",
-                                        "style":self.primary_lbl + margin_top
+                                        "style":self.primary_lbl + "margin-top:15px;"
                                     },
                                     {
                                         "name":"add_jam_masuk",
@@ -1519,7 +1745,7 @@ class Main(Util, View):
                                         "name":"lbl_add_jam_keluar",
                                         "category":"label",
                                         "text": "Jam Keluar",
-                                        "style":self.primary_lbl + margin_top
+                                        "style":self.primary_lbl + "margin-top:15px;"
                                     },
                                     {
                                         "name":"add_jam_keluar",
@@ -1530,12 +1756,24 @@ class Main(Util, View):
                                         "name":"lbl_add_nmr_pos",
                                         "category":"label",
                                         "text": "Nomor Pos/Gate",
-                                        "style":self.primary_lbl + margin_top
+                                        "style":self.primary_lbl + "margin-top:15px;"
                                     },
                                     {
                                         "name":"add_nmr_pos",
-                                        "category":"lineEdit",
+                                        "category":"lineEditInt",
                                         "style":self.primary_input
+                                    },
+                                    {
+                                        "name":"lbl_shift",
+                                        "category":"label",
+                                        "text": "Nomor Shift",
+                                        "style":self.primary_lbl + "margin-top:15px;"
+                                    },
+                                    {
+                                        "name":"add_nmr_shift",
+                                        "category":"comboBox",
+                                        "items":["shift-1", "shift-2", "shift-3", "shift-4", "shift-5"],
+                                        "style":self.primary_combobox + "background:none; color:#000;"
                                     },
                                     {
                                         "name":"btn_add_kasir",
@@ -2970,19 +3208,32 @@ class Main(Util, View):
         if not self.app_stat:
             self.app_stat = True
             sys.exit(self.app.exec_())
-   
+    
     def KasirDashboard(self):
-
+        
         ####### get ipcam ip ########
         ini = self.getPath(fileName="app.ini")
             
         configur = ConfigParser()
         configur.read(ini)
+        
+        self.kasir_uname = self.components["input_uname"].text().lower()
+        Main.kasir_uname = self.components["input_uname"].text().lower()
 
-        ipcam1 = configur["gate1"]["ipcam1"]
-        ipcam2 = configur["gate1"]["ipcam2"]
+        q_kasir = self.exec_query(f"select nik, nama, jm_masuk, jm_keluar, no_pos, shift from kasir where nama='{self.kasir_uname}'","select")
+        no_pos = q_kasir[0][4]
+        no_shift = q_kasir[0][5]
+
+        # ========== for lost ticket & offline ticket ===============
+        Main.no_pos = q_kasir[0][4]
+        Main.kd_shift = q_kasir[0][5]
+        # ===========================================================
+
+        ipcam1 = configur[f"gate{no_pos}"]["ipcam1"]
+        ipcam2 = configur[f"gate{no_pos}"]["ipcam2"]
         ##############################
 
+            
         class Debug():
             def __init__(self) -> None:
                 self.logger = logging.getLogger()
@@ -3006,7 +3257,7 @@ class Main(Util, View):
                 self.logger.addHandler(console_handler)
                 self.logger.addHandler(file_handler)
 
-
+        
         class playCam1(QThread):
             
             cp = pyqtSignal(QImage)
@@ -3204,7 +3455,13 @@ class Main(Util, View):
         self.components["gb_left"].setLayout(left_vbox)
         self.components["gb_right"].setLayout(right_vbox)
         self.components["gb_center"].setLayout(center_vbox)
-
+        
+        # list kendaraan
+        q_kendaraan = self.exec_query(f"select jns_kendaraan from tarif", "select")
+        list_kendaraan = ["--"]
+        for i in range( len(q_kendaraan) ):
+            list_kendaraan.append(q_kendaraan[i][0].lower())
+        
         left_content = [
                     {
                         "name":"lbl_stat_koneksi",
@@ -3226,7 +3483,7 @@ class Main(Util, View):
                     },
                     {
                         "name":"lbl_stat",
-                        "text":"shift ... ",
+                        "text":f"{no_shift}",
                         "category":"label",
                         "style":self.primary_lbl + "background: #0984e3; padding:5px; color: #fff;"
                     },
@@ -3238,7 +3495,7 @@ class Main(Util, View):
                     },
                     {
                         "name":"lbl_pos",
-                        "text":"PK1",
+                        "text":f"PK{no_pos}",
                         "category":"label",
                         "style":self.primary_lbl + "background: #0984e3; padding:5px; color: #fff;"
                     },
@@ -3248,35 +3505,51 @@ class Main(Util, View):
         center_content = [
                     {
                         "name":"lbl_barcode_transaksi",
-                        "text":"Barcode/Voucher:",
+                        "text":"BARCODE/VOUCHER:",
                         "category":"label",
-                        "style":self.primary_lbl
+                        "style":self.primary_lbl + "color:#f1c40f;"
                     },
                     {
                         "name":"barcode_transaksi",
-                        "category":"lineEdit",
+                        "category":"lineEditInt",
                         "style": self.primary_input + "font-weight: 600;",
                         "event": {
-                            "method_name": self.getPrice
+                            "method_name": self.nopolFocus
                         }
                     },
                     {
-                        "name":"lbl_jns_kendaraan",
-                        "text":"Jenis Kendaraan:",
+                       "name":"lbl_nopol",
+                        "text":"NOPOL:",
                         "category":"label",
-                        "style":self.primary_lbl + "margin-top:15px;"
+                        "style":self.primary_lbl + "margin-top:20px; color:#f1c40f;"
+                    },
+                    {
+                        "name":"nopol_transaksi",
+                        "category":"lineEdit",
+                        "style": self.primary_input + "font-weight: 600;",
+                        # "event":{
+                        #     "trigger": "tab",
+                        #     "method_name": self.comboPopup,
+                        #     "arguments": self.components['jns_kendaraan']
+                        # }
+                    },
+                    {
+                        "name":"lbl_jns_kendaraan",
+                        "text":"JENIS KENDARAAN:",
+                        "category":"label",
+                        "style":self.primary_lbl + "margin-top:20px; color:#f1c40f;"
                     },
                     {
                         "name":"jns_kendaraan",
-                        "category":"lineEdit",
-                        "editable":False,
-                        "style": self.primary_input + "font-weight: 600;"
+                        "category":"comboBox",
+                        "items":list_kendaraan,
+                        "style":self.primary_combobox + "font-weight: 600; background:none; color:#000;"
                     },
                     {
                         "name":"lbl_status",
-                        "text":"Status:",
+                        "text":"STATUS:",
                         "category":"label",
-                        "style":self.primary_lbl + "margin-top:15px;"
+                        "style":self.primary_lbl + "margin-top:20px; color:#f1c40f;"
                     },
                     {
                         "name":"ket_status",
@@ -3286,9 +3559,9 @@ class Main(Util, View):
                     },
                     {
                         "name":"lbl_tarif_transaksi",
-                        "text":"Tarif(Rp):",
+                        "text":"TARIF(Rp):",
                         "category":"label",
-                        "style":self.primary_lbl + "margin-top:15px;"
+                        "style":self.primary_lbl + "margin-top:20px; color:#f1c40f;"
                     },
                     {
                         "name":"tarif_transaksi",
@@ -3296,55 +3569,14 @@ class Main(Util, View):
                         "editable": False,
                         "style": self.primary_input + "height: 45px; font-weight: 600; font-size:23px; background:#ffeaa7;",
                     },
+                    {
+                        "name":"lbl_ket_karcis",
+                        "category":"label",
+                        "style": self.primary_lbl + "font-size:13px; color:#fff; font-style: italic; margin-top:15px;"
+                    }
                     
                 ]
     
-        # center_content = [
-        #         {
-        #                 "name":"lbl_barcode_bermasalah",
-        #                 "text":"BL/Barcode",
-        #                 "category":"label",
-        #                 "style":self.primary_lbl
-        #             },
-        #             {
-        #                 "name":"barcode_bermasalah",
-        #                 "category":"lineEdit",
-        #                 "style": self.primary_input
-        #             },
-        #             # {
-        #             #     "name":"lbl_tarif_bermasalah",
-        #             #     "text":"Tarif(Rp)",
-        #             #     "category":"label",
-        #             #     "style":self.primary_lbl + "margin-top:15px;"
-        #             # },
-        #             # {
-        #             #     "name":"tarif_bermasalah",
-        #             #     "category":"lineEdit",
-        #             #     "min_height": 40,
-        #             #     "editable": False,
-        #             #     "style":self.primary_input
-        #             # },
-        #             {
-        #                 "name":"lbl_ket_bermasalah",
-        #                 "text":"Keterangan",
-        #                 "category":"label",
-        #                 "style":self.primary_lbl + "margin-top:15px;"
-        #             },
-        #             {
-        #                 "name":"ket_bermasalah",
-        #                 "category":"lineEdit",
-        #                 "min_height": 40,
-        #                 "style": "border:1px solid #ecf0f1;"+self.bg_grey,
-        #                 "font":self.helvetica_12
-        #             },
-        #             # {
-        #             #     "name":"btn_simpan_bermasalah",
-        #             #     "category":"pushButton",
-        #             #     "text": "Simpan",
-        #             #     "style": self.primary_button
-        #             # }
-        # ]
-
         # add components to left
         left_vbox.addStretch(1)
         self.CreateComponentLayout(left_content, left_vbox)
@@ -3357,14 +3589,25 @@ class Main(Util, View):
         self.CreateComponentLayout(center_content, center_vbox)
         center_vbox.addStretch(1)
         
+        # combobox popup when, press tab in nopol
+        # print("==> binder1: ", self.components['nopol_transaksi'], type(self.components['nopol_transaksi']))
+        # print("==> binder2: ", self.window, type(self.window))
+
+        EventBinder(self.components['nopol_transaksi'],lambda: self.comboPopup(self.components['jns_kendaraan']), "tab")
+        EventBinder(self.window, self.kasirWindowEnter )
+        self.components['jns_kendaraan'].activated.connect(self.changeVehicle)
+
+
         # add components to right
         # self.CreateComponentLayout(right_content, right_vbox)
         ipcam_lbl1 = QLabel("CAM 1")
+        ipcam_lbl1.setStyleSheet("color:#fff; font-weight:600;")
         self.image_label = QLabel()
         self.image_label.setMaximumSize(380, 200) # 4:3
         self.image_label.setAlignment(Qt.AlignCenter)
 
         ipcam_lbl2 = QLabel("CAM 2")
+        ipcam_lbl2.setStyleSheet("color:#fff; font-weight:600;")
         self.image_label2 = QLabel()
         self.image_label2.setMaximumSize(380, 200) # 4:3
         self.image_label2.setAlignment(Qt.AlignCenter)
@@ -3383,7 +3626,9 @@ class Main(Util, View):
         self.th2.cp2.connect(self.setImageKasir2) 
         self.th2.start()
 
-       
+        # roller_thread = checkRoller(parent=self.window)   
+        # roller_thread.uname(self.kasir_uname)
+        # roller_thread.start()
 
         # self.cap_1 = cv2.VideoCapture(self.stream_url_1)
         # self.cap_2 = cv2.VideoCapture(self.stream_url_2)
@@ -3443,14 +3688,18 @@ class Main(Util, View):
         self.keyShortcut(keyCombination="Ctrl+f", command="search-voucher")
         
         # btn bayar
-        self.keyShortcut(keyCombination="Ctrl+b", command="pay")
+
+        # self.keyShortcut(keyCombination="Ctrl+b", command="pay")
         
         # lap user bermasalah
-        # self.keyShortcut(keyCombination="Ctrl+l", targetWidget=self.components["barcode_bermasalah"])
-        self.keyShortcut(keyCombination="Ctrl+l", command="popup-user-bermasalah")
+        self.keyShortcut(keyCombination="Ctrl+l", command="lost-ticket")
+        
+        self.keyShortcut(keyCombination="Ctrl+e", command="logout")
+        
+        self.keyShortcut(keyCombination="Ctrl+h", command="help")
         
         # save btn - lap user bermasalah
-        self.keyShortcut(keyCombination="Ctrl+s", command="save")
+        # self.keyShortcut(keyCombination="Ctrl+s", command="save")
         
         # open gate keluar
         self.keyShortcut(keyCombination="Ctrl+o", command="open-gate")
@@ -3470,21 +3719,8 @@ class Main(Util, View):
     def kasirLogout(self):
         self.th.stop()
         self.th2.stop()    
-        # print("==> thread: ", self.th, type(self.th))
-
+        
         self.closeWindow(self.window)
-        # self.window = QMainWindow()
-       
-        # window_setter = {
-        #     "title":"Kasir Dashboard", 
-        #     "style":self.win_dashboard
-        # }
-
-        # # create window
-        # self.CreateWindow(window_setter, self.window)
-
-        # self.window.show()
-       
         self.Login()
         
     def setImageKasir(self, image):
