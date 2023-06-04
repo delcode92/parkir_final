@@ -1,0 +1,37 @@
+===========framework============
+
+# comboBox styling
+    primary_combobox = """
+                        QComboBox QAbstractItemView {
+                            background: #fff;
+                            color:#000;
+                        }
+                        QComboBox{
+                            height:35px; 
+                            background-color: #fff;
+                            selection-background-color: #192038;
+                            color: #000;
+                            font-family: Helvetica;
+                            font-size: 14px;
+    """
+
+==================================
+
+
+
+=========== main new gui2 (line:2849) ===============
+{
+                                        "name":"add_voucher_masa_berlaku",
+                                        "category":"date",
+                                        "style":self.primary_date
+                                    },
+
+==================================================
+
+
+
+=============== controller == (line:3062)========
+ # date_masuk = "" if res[i][5] is None else str(res[i][5].strftime("%d/%m/%y %H:%M:%S"))
+            # date_keluar = "" if res[i][6] is None else str(res[i][5].strftime("%d/%m/%y %H:%M:%S"))
+            date_masuk = "" if res[i][5] is None else str(res[i][5])
+            date_keluar = "" if res[i][6] is None else str(res[i][5])
