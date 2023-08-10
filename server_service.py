@@ -776,6 +776,9 @@ class Server:
                     data = conn.recv(1024)
                     msg = data.decode("utf-8")
                     
+
+                    print("incoming msg ==> ",msg)
+
                     if(msg==''):
                         self.debug.logger.info(f"client{addr} disconnected at {datetime.datetime.now()}")
                     elif(msg!=''):
@@ -934,6 +937,7 @@ class Server:
             # start_new_thread(self.gui,())    
             with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as s:
                 s.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
+                # s.settimeout()
                 s.bind((h, p))
                 s.listen()
                 conn, addr = s.accept()
