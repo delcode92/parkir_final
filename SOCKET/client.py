@@ -5,15 +5,15 @@ from time import sleep
 
 def start_client():
     client_socket = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
-    host = '127.0.0.1'
-    port = 12345
+    host = '0.tcp.ap.ngrok.io'
+    port = 11656
 
     client_socket.connect((host, port))
     client_socket.settimeout(2)
-    ping = "PING from client"
+    ping = "PING from client, via ngrok"
     client_socket.sendall(ping.encode())
     
-    # response = client_socket.recv(1024).decode()
+    # response = client_socket.recv(1024).decode() 
     # print("Server response: {}".format(response))
 
     # sleep(1)
