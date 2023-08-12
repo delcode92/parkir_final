@@ -17,7 +17,8 @@ from configparser import ConfigParser
 import copy
 
 class Debug():
-    
+
+    '''
     def __init__(self) -> None:
         
         self.logger = logging.getLogger()
@@ -40,6 +41,17 @@ class Debug():
 
         self.logger.addHandler(console_handler)
         self.logger.addHandler(file_handler)
+    '''
+
+    def __init__(self, stat) -> None:
+        self.stat = stat
+
+    def debug(self, msg):
+        if self.stat: print(msg)
+    def info(self, msg):
+        if self.stat: print(msg)
+    def error(self, msg):
+        if self.stat: print(msg)
 
 # class worker
 class Thread(QThread):
@@ -753,7 +765,7 @@ class Server:
     def __init__(self, host, port, multiproc_conn ) -> None:
         
         # init debug
-        # self.debug = Debug()
+        self.debug = Debug(1)
 
         self.process_conn = multiproc_conn
         self.SERVER_IP = host
@@ -778,16 +790,14 @@ class Server:
             # create label component
 
             try:
-                print("Server standby waiting message from client ... ")
-                # self.debug.logger.info("Server standby waiting message from client ... ")
+                self.debug.logger.info("Server standby waiting message from client ... \n\n")
 
                 while True:
                     data = conn.recv(1024)
                     msg = data.decode("utf-8")
                     
                     if(msg==''):
-                        print(f"client{addr} disconnected at {datetime.datetime.now()}")
-                        # self.debug.logger.info(f"client{addr} disconnected at {datetime.datetime.now()}")
+                        self.debug.logger.info(f"client{addr} disconnected at {datetime.datetime.now()} \n\n")
                     elif(msg!=''):
                         # disini harus bisa membedakan data string yg diterima
                         # apakah itu string RFID 
@@ -797,150 +807,153 @@ class Server:
 
                         # txt = data.decode("utf-8")
                         # print(data.decode("utf-8"))
-                        # print("===========> masuk bro")
-                        print("==>",msg)
-                        # conn.sendall( bytes("thanks alot", 'utf-8') )
-                       
-                        if "rfid#" in msg:
-                            conn.sendall( bytes("thanks alot", 'utf-8') )
-                        #     print("selsai kirim")
-
-                        else:
-                            conn.sendall( bytes("no COMMAND found", 'utf-8') )
-
-                        # if "rfid#" in msg:
-                        #     try:
-                        #         msg = re.search('rfid#(.+?)#end', msg).group(1)
-                        #     except Exception as e:
-                        #         self.debug.logger.debug("rfid between substring not found ... ")
-                        #         self.debug.logger.error(str(e))
-
-                        #     print("==================================")
-                        #     print("checking RFID ...")
-
-                        #     # self.db_cursor.execute("select count(*) as count from rfid where rfid='123'")
-                        #     res = self.exec_query(f"select count(*) as count from rfid where rfid='{msg}'", "select")
-                        #     # print(f"select count(*) as count from rfid where rfid='{msg}'")
-                        #     self.debug.logger.debug("RFID result: "+ str(res[0][0]))
-                            
-                                  
-
-                        #     if res[0][0] == 1:
-                        #         self.debug.logger.debug("success rfid")
-                        #         conn.sendall( bytes("rfid-true", 'utf-8') )
-                        #     else:
-                        #         self.debug.logger.debug("fail rfid")
-                        #         conn.sendall( bytes("rfid-false", 'utf-8') )
-                        #     print("==================================")
-
-                        # elif "date#" in msg:
-                        #     try:
-                        #         self.debug.logger.debug("Set datetime for client ... ")
-
-                        #         # get current date
-                        #         today = datetime.datetime.now()
-                        #         dt = today.strftime("%Y-%m-%d %H:%M:%S")
-
-                        #         conn.sendall( bytes(f"date#{dt}#end", 'utf-8') )
-                        #     except Exception as e:
-                        #         self.debug.logger.debug("getdate between substring not found ... ")
-                        #         self.debug.logger.error(str(e))
-
-                        # elif "pushButton#" in msg:
-                            
-                        #     try:
-                        #         msg = re.search('pushButton#(.+?)#end', msg).group(1)
-                        #     except AttributeError:
-                        #         self.debug.logger.error("JSON between substring not found ... ")
-
-                        #     try:
-                                
-                        #         self.debug.logger.debug("get json string : " + msg)
-                        #         self.debug.logger.info("converting to dictionary ...")
-                        #         res = json.loads(msg)    
-                        #         self.debug.logger.debug(res)
-
-                        #         # get data from json
-                        #         barcode = res["barcode"]
-                        #         time = res["time"]
-                        #         jns_kendaraan = res["jns_kendaraan"]
-                        #         jns_kendaraan = jns_kendaraan.lower()
-                        #         gate = res["gate"]
-                        #         ip_raspi = res["ip_raspi"]
-                        #         # save to db
-                        #         Y = time[0:4]
-                        #         M = time[4:6]
-                        #         D = time[6:8]
-
-                        #         h = time[8:10]
-                        #         m = time[10:12]
-                        #         s = time[12:14]
-                                
-                        #         time = int(time)
-                        #         # insert into karcis (datetime) values('2023-01-05 10:43:50.866085');
-                        #         dt = f'{Y}-{M}-{D} {h}:{m}:{s}'
-                        #         q = f"insert into karcis (barcode, datetime, gate, jenis_kendaraan, ip_raspi) values ('{barcode}', '{dt}', '{gate}', '{jns_kendaraan}', '{ip_raspi}')";
-                        #         self.exec_query(q)
-
-                        #         # set filename from ip cam class
-                        #         IPCam.img_name = barcode
-
-                        #         # capture cam image
-                        #         self.debug.logger.info("server ask to snapshot ....")
-                        #         self.process_conn.send(f"snapshot#{barcode}")
-                                
-                        #         self.debug.logger.info("Save Date Time & capture cam image success ....")
-                        #         self.debug.logger.info(f"send return value to raspi( {addr} )....")
-                                
-                        #         conn.sendall( bytes("printer-true", 'utf-8') )
-                            
-                        #     except Exception as e:
-                        #         self.debug.logger.error(str(e))
-                            
-                        # elif "config#" in msg:
-                        #     try:
-                        #         print("===================================")
-                        #         msg = re.search('config#(.+?)#end', msg).group(1)
-                        #         self.debug.logger.info("receive message from GUI: "+ msg)
-
-                        #         self.debug.logger.info("broadcast to clients ...")
-
-                        #         for ip in self.list_of_clients.keys():
-                        #             if ip != self.SERVER_IP:
-                        #                 self.debug.logger.info(f"send config JSON to {ip} ... ")
-                        #                 self.list_of_clients[ip].sendall( bytes(f'config#{msg}#end', 'utf-8') )
-                        #                 sleep(1)
-
-                        #     except Exception as e:
-                        #         self.debug.logger.error(str(e))
-                            
-                        # elif "gate#" in msg:
-                        #     print("===================================")
-                        #     ip = re.search('gate#(.+?)#end', msg).group(1)
-                        #     self.debug.logger.info("Open gate with ip : "+ ip)
-
-                        #     self.list_of_clients[ip].sendall( bytes(f'open-true', 'utf-8') )
                         
-                        # elif "roller#" in msg:
+                        self.debug.logger.info("\n\n")
+                        self.debug.logger.info("==============================\n")
+                        self.debug.logger.info("Receive Message : \n")
+                        self.debug.logger.info(f"From : {addr} \n")
+                        self.debug.logger.info(f"Message : {msg} \n")
+                        self.debug.logger.info("==============================\n")
+                        
+                        if "rfid#" in msg:
+                            try:
+                                msg = re.search('rfid#(.+?)#end', msg).group(1)
+                            except Exception as e:
+                                self.debug.logger.debug("\n rfid between substring not found ... \n")
+                                self.debug.logger.error(str(e))
+
+                            self.debug.logger.info("\n\n")
+                            self.debug.logger.info("==================================")
+                            self.debug.logger.info("checking RFID ...")
+
+                            res = self.exec_query(f"select count(*) as count from rfid where rfid='{msg}'", "select")
+                            self.debug.logger.debug("RFID result: "+ str(res[0][0]))
                             
-                        #     gate_number = re.search('roller#(.+?)#end', f'{msg}').group(1)
-                        #     gate_number = gate_number.replace('"', '')
-                        #     q_roller = self.exec_query(f"update kasir set roller_stat=false where no_pos='{gate_number}'")
-                        #     self.debug.logger.info("Karcis Habis, Gate : "+ gate_number)
+
+                            if res[0][0] == 1:
+                                self.debug.logger.debug("success rfid")
+                                conn.sendall( bytes("rfid-true", 'utf-8') )
+                            else:
+                                self.debug.logger.debug("fail rfid")
+                                conn.sendall( bytes("rfid-false", 'utf-8') )
+                            self.debug.logger.debug("==================================\n\n")
+
+                        elif "date#" in msg:
+                            self.debug.logger.debug("==================================")
+                            try:
+                                self.debug.logger.debug("Set datetime for client ... ")
+
+                                # get current date
+                                today = datetime.datetime.now()
+                                dt = today.strftime("%Y-%m-%d %H:%M:%S")
+
+                                self.debug.logger.debug(f"Send date to client {add}")
+                                conn.sendall( bytes(f"date#{dt}#end", 'utf-8') )
+                            except Exception as e:
+                                self.debug.logger.debug("getdate between substring not found ... ")
+                                self.debug.logger.error(str(e))
+
+                            self.debug.logger.debug("================================== \n\n")
+
+                        elif "pushButton#" in msg:
                             
-                        # elif "resetRoller#" in msg:
-                            # gate_number = re.search('resetRoller#(.+?)#end', f'{msg}').group(1)
-                            # gate_number = gate_number.replace('"', '')
+                            self.debug.logger.debug("==================================")
+                            self.debug.logger.debug("Push button from client {addr}")
+                            try:
+                                msg = re.search('pushButton#(.+?)#end', msg).group(1)
+                            except AttributeError:
+                                self.debug.logger.error("JSON between substring not found ... ")
+
+                            try:
+                                
+                                self.debug.logger.debug("get json string : " + msg)
+                                self.debug.logger.info("converting to dictionary ...")
+                                res = json.loads(msg)    
+                                self.debug.logger.debug(res)
+
+                                # get data from json
+                                barcode = res["barcode"]
+                                time = res["time"]
+                                jns_kendaraan = res["jns_kendaraan"]
+                                jns_kendaraan = jns_kendaraan.lower()
+                                gate = res["gate"]
+                                ip_raspi = res["ip_raspi"]
+                                # save to db
+                                Y = time[0:4]
+                                M = time[4:6]
+                                D = time[6:8]
+
+                                h = time[8:10]
+                                m = time[10:12]
+                                s = time[12:14]
+                                
+                                time = int(time)
+                                # insert into karcis (datetime) values('2023-01-05 10:43:50.866085');
+                                dt = f'{Y}-{M}-{D} {h}:{m}:{s}'
+                                q = f"insert into karcis (barcode, datetime, gate, jenis_kendaraan, ip_raspi) values ('{barcode}', '{dt}', '{gate}', '{jns_kendaraan}', '{ip_raspi}')";
+                                self.exec_query(q)
+
+                                # set filename from ip cam class
+                                IPCam.img_name = barcode
+
+                                # capture cam image
+                                self.debug.logger.info("server ask to snapshot ....")
+                                # self.process_conn.send(f"snapshot#{barcode}")
+                                
+                                self.debug.logger.info("Save Date Time & capture cam image success ....")
+                                self.debug.logger.info(f"send return value to raspi( {addr} )....")
+                                
+                                conn.sendall( bytes("printer-true", 'utf-8') )
                             
-                            # print(f"update kasir set roller_stat=true where no_pos='{gate_number}'")
-                            # q_roller = self.exec_query(f"update kasir set roller_stat=false where no_pos='{gate_number}'")
-                            # self.debug.logger.info("reset roller, gate : "+ gate_number)
+                            except Exception as e:
+                                self.debug.logger.error(str(e))
+                            
+                            self.debug.logger.debug("==================================\n\n")
+
+                        elif "config#" in msg:
+                            try:
+                                print("===================================")
+                                msg = re.search('config#(.+?)#end', msg).group(1)
+                                self.debug.logger.info("receive message from GUI: "+ msg)
+
+                                self.debug.logger.info("broadcast to clients ...")
+
+                                for ip in self.list_of_clients.keys():
+                                    if ip != self.SERVER_IP:
+                                        self.debug.logger.info(f"send config JSON to {ip} ... ")
+                                        self.list_of_clients[ip].sendall( bytes(f'config#{msg}#end', 'utf-8') )
+                                        sleep(1)
+
+                            except Exception as e:
+                                self.debug.logger.error(str(e))
+                            
+                        elif "gate#" in msg:
+                            print("===================================")
+                            ip = re.search('gate#(.+?)#end', msg).group(1)
+                            self.debug.logger.info("Open gate with ip : "+ ip)
+
+                            self.list_of_clients[ip].sendall( bytes(f'open-true', 'utf-8') )
+                        
+                        elif "roller#" in msg:
+                            
+                            gate_number = re.search('roller#(.+?)#end', f'{msg}').group(1)
+                            gate_number = gate_number.replace('"', '')
+                            q_roller = self.exec_query(f"update kasir set roller_stat=false where no_pos='{gate_number}'")
+                            self.debug.logger.info("Karcis Habis, Gate : "+ gate_number)
+                            
+                        elif "resetRoller#" in msg:
+                            gate_number = re.search('resetRoller#(.+?)#end', f'{msg}').group(1)
+                            gate_number = gate_number.replace('"', '')
+                            
+                            print(f"update kasir set roller_stat=true where no_pos='{gate_number}'")
+                            q_roller = self.exec_query(f"update kasir set roller_stat=false where no_pos='{gate_number}'")
+                            self.debug.logger.info("reset roller, gate : "+ gate_number)
                             
                     if not data:
                         break
             except:
-                print(f"client{addr} disconnected at {datetime.datetime.now()}")
-                # self.debug.logger.error(f"client{addr} disconnected at {datetime.datetime.now()}")
+                # print(f"client{addr} disconnected at {datetime.datetime.now()}")
+                self.debug.logger.error(f"client{addr} disconnected at {datetime.datetime.now()}")
                 
 
     def connect_server(self, h, p):
