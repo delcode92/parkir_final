@@ -544,14 +544,14 @@ class IPCam(Util, View):
         self.snap_stat = True
 
     def snap_thread(self, image):
-        self.debug.logger.info("Run snapshot thread( standby waiting snapshot# command ) ...")
+        self.debug.info("Run snapshot thread( standby waiting snapshot# command ) ...")
 
         while True:
             snap = self.process_conn.recv()
             
             if  "snapshot#" in snap:
                 
-                self.debug.logger.info("Get & Split snapshot command")
+                self.debug.info("Get & Split snapshot command")
 
                 # split barcode from snapshot# string
                 snap = snap.replace("snapshot#", "")
@@ -683,8 +683,8 @@ class IPCam(Util, View):
             self.lbl1.setPixmap(QPixmap.fromImage(image))
             
         except Exception as e:
-            self.debug.logger.info("Something wrong with set image frame to QLabel 1 ...")
-            self.debug.logger.error(str(e))
+            self.debug.info("Something wrong with set image frame to QLabel 1 ...")
+            self.debug.error(str(e))
         
         if self.snap_thread_stat == False:
             start_new_thread(self.snap_thread, (image,))
@@ -694,63 +694,63 @@ class IPCam(Util, View):
             image.save(f"./cap/{self.snap_barcode}.jpg","JPG")
             self.snap_stat = False
             image = QImage()
-            self.debug.logger.info("save snapshot image & re-init QImage 1 ...")
+            self.debug.info("save snapshot image & re-init QImage 1 ...")
 
     def setImage2(self, image):
         try:
             self.lbl2.setPixmap(QPixmap.fromImage(image))
             
         except Exception as e:
-            self.debug.logger.info("Something wrong with set image frame to QLabel 2 ...")
-            self.debug.logger.error(str(e))
+            self.debug.info("Something wrong with set image frame to QLabel 2 ...")
+            self.debug.error(str(e))
 
     def setImage3(self, image):
         try:
             self.lbl3.setPixmap(QPixmap.fromImage(image))
             
         except Exception as e:
-            self.debug.logger.info("Something wrong with set image frame to QLabel 3 ...")
-            self.debug.logger.error(str(e))
+            self.debug.info("Something wrong with set image frame to QLabel 3 ...")
+            self.debug.error(str(e))
 
     def setImage4(self, image):
         try:
             self.lbl4.setPixmap(QPixmap.fromImage(image))
             
         except Exception as e:
-            self.debug.logger.info("Something wrong with set image frame to QLabel 4 ...")
-            self.debug.logger.error(str(e))
+            self.debug.info("Something wrong with set image frame to QLabel 4 ...")
+            self.debug.error(str(e))
     
     def setImage5(self, image):
         try:
             self.lbl5.setPixmap(QPixmap.fromImage(image))
             
         except Exception as e:
-            self.debug.logger.info("Something wrong with set image frame to QLabel 5 ...")
-            self.debug.logger.error(str(e))
+            self.debug.info("Something wrong with set image frame to QLabel 5 ...")
+            self.debug.error(str(e))
 
     def setImage6(self, image):
         try:
             self.lbl6.setPixmap(QPixmap.fromImage(image))
             
         except Exception as e:
-            self.debug.logger.info("Something wrong with set image frame to QLabel 6 ...")
-            self.debug.logger.error(str(e))
+            self.debug.info("Something wrong with set image frame to QLabel 6 ...")
+            self.debug.error(str(e))
 
     def setImage7(self, image):
         try:
             self.lbl7.setPixmap(QPixmap.fromImage(image))
             
         except Exception as e:
-            self.debug.logger.info("Something wrong with set image frame to QLabel 7 ...")
-            self.debug.logger.error(str(e))
+            self.debug.info("Something wrong with set image frame to QLabel 7 ...")
+            self.debug.error(str(e))
 
     def setImage8(self, image):
         try:
             self.lbl8.setPixmap(QPixmap.fromImage(image))
             
         except Exception as e:
-            self.debug.logger.info("Something wrong with set image frame to QLabel 8 ...")
-            self.debug.logger.error(str(e))
+            self.debug.info("Something wrong with set image frame to QLabel 8 ...")
+            self.debug.error(str(e))
 
 # HOST = "127.0.0.1" --> sys.argv[1]
 # PORT = 65430 --> sys.argv[2]
@@ -774,7 +774,7 @@ class Server:
         self.connect_server(host, int(port))
 
     def client_thread(self, conn,addr):
-        # self.debug.logger.info("Start client thread")
+        # self.debug.info("Start client thread")
         
         with conn:
             # tidak masalah pembuatan komponen label koneksi disini
@@ -785,19 +785,19 @@ class Server:
             # sementara pada penamaan komponen label harus ada hubungan/integrasi antara client yg konek dengan name 
             # komponent tersebut
 
-            # self.debug.logger.info(f"Connected by {addr}")
+            # self.debug.info(f"Connected by {addr}")
             
             # create label component
 
             try:
-                self.debug.logger.info("Server standby waiting message from client ... \n\n")
+                self.debug.info("Server standby waiting message from client ... \n\n")
 
                 while True:
                     data = conn.recv(1024)
                     msg = data.decode("utf-8")
                     
                     if(msg==''):
-                        self.debug.logger.info(f"client{addr} disconnected at {datetime.datetime.now()} \n\n")
+                        self.debug.info(f"client{addr} disconnected at {datetime.datetime.now()} \n\n")
                     elif(msg!=''):
                         # disini harus bisa membedakan data string yg diterima
                         # apakah itu string RFID 
@@ -808,68 +808,68 @@ class Server:
                         # txt = data.decode("utf-8")
                         # print(data.decode("utf-8"))
                         
-                        self.debug.logger.info("\n\n")
-                        self.debug.logger.info("==============================\n")
-                        self.debug.logger.info("Receive Message : \n")
-                        self.debug.logger.info(f"From : {addr} \n")
-                        self.debug.logger.info(f"Message : {msg} \n")
-                        self.debug.logger.info("==============================\n")
+                        self.debug.info("\n\n")
+                        self.debug.info("==============================\n")
+                        self.debug.info("Receive Message : \n")
+                        self.debug.info(f"From : {addr} \n")
+                        self.debug.info(f"Message : {msg} \n")
+                        self.debug.info("==============================\n")
                         
                         if "rfid#" in msg:
                             try:
                                 msg = re.search('rfid#(.+?)#end', msg).group(1)
                             except Exception as e:
-                                self.debug.logger.debug("\n rfid between substring not found ... \n")
-                                self.debug.logger.error(str(e))
+                                self.debug.debug("\n rfid between substring not found ... \n")
+                                self.debug.error(str(e))
 
-                            self.debug.logger.info("\n\n")
-                            self.debug.logger.info("==================================")
-                            self.debug.logger.info("checking RFID ...")
+                            self.debug.info("\n\n")
+                            self.debug.info("==================================")
+                            self.debug.info("checking RFID ...")
 
                             res = self.exec_query(f"select count(*) as count from rfid where rfid='{msg}'", "select")
-                            self.debug.logger.debug("RFID result: "+ str(res[0][0]))
+                            self.debug.debug("RFID result: "+ str(res[0][0]))
                             
 
                             if res[0][0] == 1:
-                                self.debug.logger.debug("success rfid")
+                                self.debug.debug("success rfid")
                                 conn.sendall( bytes("rfid-true", 'utf-8') )
                             else:
-                                self.debug.logger.debug("fail rfid")
+                                self.debug.debug("fail rfid")
                                 conn.sendall( bytes("rfid-false", 'utf-8') )
-                            self.debug.logger.debug("==================================\n\n")
+                            self.debug.debug("==================================\n\n")
 
                         elif "date#" in msg:
-                            self.debug.logger.debug("==================================")
+                            self.debug.debug("==================================")
                             try:
-                                self.debug.logger.debug("Set datetime for client ... ")
+                                self.debug.debug("Set datetime for client ... ")
 
                                 # get current date
                                 today = datetime.datetime.now()
                                 dt = today.strftime("%Y-%m-%d %H:%M:%S")
 
-                                self.debug.logger.debug(f"Send date to client {add}")
+                                self.debug.debug(f"Send date to client {add}")
                                 conn.sendall( bytes(f"date#{dt}#end", 'utf-8') )
                             except Exception as e:
-                                self.debug.logger.debug("getdate between substring not found ... ")
-                                self.debug.logger.error(str(e))
+                                self.debug.debug("getdate between substring not found ... ")
+                                self.debug.error(str(e))
 
-                            self.debug.logger.debug("================================== \n\n")
+                            self.debug.debug("================================== \n\n")
 
                         elif "pushButton#" in msg:
                             
-                            self.debug.logger.debug("==================================")
-                            self.debug.logger.debug("Push button from client {addr}")
+                            self.debug.debug("==================================")
+                            self.debug.debug("Push button from client {addr}")
                             try:
                                 msg = re.search('pushButton#(.+?)#end', msg).group(1)
                             except AttributeError:
-                                self.debug.logger.error("JSON between substring not found ... ")
+                                self.debug.error("JSON between substring not found ... ")
 
                             try:
                                 
-                                self.debug.logger.debug("get json string : " + msg)
-                                self.debug.logger.info("converting to dictionary ...")
+                                self.debug.debug("get json string : " + msg)
+                                self.debug.info("converting to dictionary ...")
                                 res = json.loads(msg)    
-                                self.debug.logger.debug(res)
+                                self.debug.debug(res)
 
                                 # get data from json
                                 barcode = res["barcode"]
@@ -897,40 +897,40 @@ class Server:
                                 IPCam.img_name = barcode
 
                                 # capture cam image
-                                self.debug.logger.info("server ask to snapshot ....")
+                                self.debug.info("server ask to snapshot ....")
                                 # self.process_conn.send(f"snapshot#{barcode}")
                                 
-                                self.debug.logger.info("Save Date Time & capture cam image success ....")
-                                self.debug.logger.info(f"send return value to raspi( {addr} )....")
+                                self.debug.info("Save Date Time & capture cam image success ....")
+                                self.debug.info(f"send return value to raspi( {addr} )....")
                                 
                                 conn.sendall( bytes("printer-true", 'utf-8') )
                             
                             except Exception as e:
-                                self.debug.logger.error(str(e))
+                                self.debug.error(str(e))
                             
-                            self.debug.logger.debug("==================================\n\n")
+                            self.debug.debug("==================================\n\n")
 
                         elif "config#" in msg:
                             try:
                                 print("===================================")
                                 msg = re.search('config#(.+?)#end', msg).group(1)
-                                self.debug.logger.info("receive message from GUI: "+ msg)
+                                self.debug.info("receive message from GUI: "+ msg)
 
-                                self.debug.logger.info("broadcast to clients ...")
+                                self.debug.info("broadcast to clients ...")
 
                                 for ip in self.list_of_clients.keys():
                                     if ip != self.SERVER_IP:
-                                        self.debug.logger.info(f"send config JSON to {ip} ... ")
+                                        self.debug.info(f"send config JSON to {ip} ... ")
                                         self.list_of_clients[ip].sendall( bytes(f'config#{msg}#end', 'utf-8') )
                                         sleep(1)
 
                             except Exception as e:
-                                self.debug.logger.error(str(e))
+                                self.debug.error(str(e))
                             
                         elif "gate#" in msg:
                             print("===================================")
                             ip = re.search('gate#(.+?)#end', msg).group(1)
-                            self.debug.logger.info("Open gate with ip : "+ ip)
+                            self.debug.info("Open gate with ip : "+ ip)
 
                             self.list_of_clients[ip].sendall( bytes(f'open-true', 'utf-8') )
                         
@@ -939,7 +939,7 @@ class Server:
                             gate_number = re.search('roller#(.+?)#end', f'{msg}').group(1)
                             gate_number = gate_number.replace('"', '')
                             q_roller = self.exec_query(f"update kasir set roller_stat=false where no_pos='{gate_number}'")
-                            self.debug.logger.info("Karcis Habis, Gate : "+ gate_number)
+                            self.debug.info("Karcis Habis, Gate : "+ gate_number)
                             
                         elif "resetRoller#" in msg:
                             gate_number = re.search('resetRoller#(.+?)#end', f'{msg}').group(1)
@@ -947,18 +947,18 @@ class Server:
                             
                             print(f"update kasir set roller_stat=true where no_pos='{gate_number}'")
                             q_roller = self.exec_query(f"update kasir set roller_stat=false where no_pos='{gate_number}'")
-                            self.debug.logger.info("reset roller, gate : "+ gate_number)
+                            self.debug.info("reset roller, gate : "+ gate_number)
                             
                     if not data:
                         break
             except:
                 # print(f"client{addr} disconnected at {datetime.datetime.now()}")
-                self.debug.logger.error(f"client{addr} disconnected at {datetime.datetime.now()}")
+                self.debug.error(f"client{addr} disconnected at {datetime.datetime.now()}")
                 
 
     def connect_server(self, h, p):
         print("============> socket server running .... ")
-        # self.debug.logger.info("conn to server ... ")
+        # self.debug.info("conn to server ... ")
         
         # while true -> fro server socket always stanby, event after client connection break/fail
         while True:
@@ -979,7 +979,7 @@ class Server:
         return '/'.join([path, fileName])
 
     def connect_to_postgresql(self):
-        # self.debug.logger.info("conn to potsgre")
+        # self.debug.info("conn to potsgre")
         ini = self.getPath("app.ini")
         
         configur = ConfigParser()
@@ -997,7 +997,7 @@ class Server:
     def exec_query(self, query, type=""):
         try:
             self.db_cursor.execute(query)
-            self.debug.logger.debug("\nsuccess execute query")
+            self.debug.debug("\nsuccess execute query")
 
             if type == "":    
                 return True
@@ -1007,7 +1007,7 @@ class Server:
                 return data
 
         except Exception as e:
-            self.debug.logger.error(str(e))
+            self.debug.error(str(e))
 
 
 def run():
