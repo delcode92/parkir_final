@@ -14,7 +14,6 @@ from cv2 import add
 from _thread import start_new_thread
 from framework import *
 from configparser import ConfigParser
-import copy
 
 class Debug():
 
