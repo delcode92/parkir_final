@@ -5,18 +5,24 @@ from time import sleep
 
 def start_client():
     client_socket = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
-    host = '0.tcp.ap.ngrok.io'
-    port = 11656
+    client_socket.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
+    
+    # host = '0.tcp.ap.ngrok.io'
+    # port = 11656
+    host = '127.0.0.1'
+    port = 12345
 
     client_socket.connect((host, port))
     client_socket.settimeout(2)
     ping = "PING from client, via ngrok"
-    client_socket.sendall(ping.encode())
     
-    # response = client_socket.recv(1024).decode() 
-    # print("Server response: {}".format(response))
+    while True:
+        client_socket.sendall(ping.encode())
+        
+        response = client_socket.recv(1024).decode() 
+        print("Server response: {}".format(response))
 
-    # sleep(1)
+        sleep(1)
 
 def inputRFID(client_socket):
     while True:

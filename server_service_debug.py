@@ -546,8 +546,9 @@ class IPCam(Util, View):
         self.debug.info("Run snapshot thread( standby waiting snapshot# command ) ...")
 
         while True:
-            snap = self.process_conn.recv()
-            
+            data = self.process_conn.recv()
+            snap = data.decode("utf-8")
+
             if  "snapshot#" in snap:
                 
                 self.debug.info("Get & Split snapshot command")
@@ -774,7 +775,7 @@ class Server:
 
     def client_thread(self, conn,addr):
         # self.debug.info("Start client thread")
-        
+        # conn.settimeout(3)
         with conn:
             # tidak masalah pembuatan komponen label koneksi disini
             # karena kalaupun koneksi gagal maka statusnya bisa dicek ama looping cek koneksi pada program client_service
