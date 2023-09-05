@@ -3603,28 +3603,31 @@ class Main(Util, View):
         ipcam_lbl1 = QLabel("CAM 1")
         ipcam_lbl1.setStyleSheet("color:#fff; font-weight:600;")
         self.image_label = QLabel()
+        self.image_label.setStyleSheet("background: #000;")
         self.image_label.setMaximumSize(380, 200) # 4:3
         self.image_label.setAlignment(Qt.AlignCenter)
 
         ipcam_lbl2 = QLabel("CAM 2")
         ipcam_lbl2.setStyleSheet("color:#fff; font-weight:600;")
         self.image_label2 = QLabel()
+        self.image_label2.setStyleSheet("background: #000;")
         self.image_label2.setMaximumSize(380, 200) # 4:3
         self.image_label2.setAlignment(Qt.AlignCenter)
 
         # self.stream_url_1 = 'rtsp://admin:admin@192.168.100.121'
         # self.stream_url_2 = 'http://192.168.100.69:4747/video'
 
-
-        self.th = playCam1(parent=self.window)
+        # ======================= enable / disable cam thread for kasir ===================
         # self.th = playCam1()
-        self.th.cp.connect(self.setImageKasir) 
-        self.th.start()
+        # self.th = playCam1(parent=self.window)
+        # self.th.cp.connect(self.setImageKasir) 
+        # self.th.start()
         
-        self.th2 = playCam2(parent=self.window)
         # self.th2 = playCam2()
-        self.th2.cp2.connect(self.setImageKasir2) 
-        self.th2.start()
+        # self.th2 = playCam2(parent=self.window)
+        # self.th2.cp2.connect(self.setImageKasir2) 
+        # self.th2.start()
+        # =================================================================================
 
         # roller_thread = checkRoller(parent=self.window)   
         # roller_thread.uname(self.kasir_uname)
