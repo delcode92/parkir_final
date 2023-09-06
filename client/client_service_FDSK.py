@@ -68,7 +68,7 @@ class Client:
 
             sleep(1)
 
-            
+    
     def get_date(self):
 
         self.s.sendall( bytes(f"date#getdate#end", 'utf-8') )

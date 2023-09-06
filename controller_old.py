@@ -12,24 +12,13 @@ from fpdf import FPDF
 # from time import sleep
 
 # from framework import View
-class logging:
-    def __init__(self, stat) -> None:
-        self.stat = stat
-
-    def debug(self, msg):
-        if self.stat: print(msg)
-    def info(self, msg):
-        if self.stat: print(msg)
-    def error(self, msg):
-        if self.stat: print(msg)
 
 class Controller(Client):
-    kd_shift = ""
+    
     def __init__(self) -> None:
         # self.Util.__init__(self)
         
         self.initDebug()
-        self.initConfig()
 
         # active db cursor 
         self.connect_to_postgresql()
@@ -52,53 +41,46 @@ class Controller(Client):
         self.logger.info("active DB cursor ..... \n")
         
     def initDebug(self):
-        self.logger = logging(1)
-        # try:
-        #     self.logger = logging.getLogger()
-        #     self.logger.setLevel(logging.NOTSET)
-        #     self.logfile_path = "./logging/log_file.log"
+        self.logger = logging.getLogger()
+        self.logger.setLevel(logging.NOTSET)
+        self.logfile_path = "./logging/log_file.log"
 
 
-        #     # our first handler is a console handler
-        #     console_handler = logging.StreamHandler()
-        #     console_handler.setLevel(logging.DEBUG)
-        #     console_handler_format = '%(levelname)s: %(message)s'
-        #     console_handler.setFormatter(logging.Formatter(console_handler_format))
+        # our first handler is a console handler
+        console_handler = logging.StreamHandler()
+        console_handler.setLevel(logging.DEBUG)
+        console_handler_format = '%(levelname)s: %(message)s'
+        console_handler.setFormatter(logging.Formatter(console_handler_format))
 
-        #     # start logging and show messages
+        # start logging and show messages
 
-        #     # the second handler is a file handler
-        #     file_handler = logging.FileHandler(self.logfile_path)
-        #     file_handler.setLevel(logging.INFO)
-        #     file_handler_format = '%(asctime)s | %(levelname)s | %(lineno)d: %(message)s'
-        #     file_handler.setFormatter(logging.Formatter(file_handler_format))
+        # the second handler is a file handler
+        file_handler = logging.FileHandler(self.logfile_path)
+        file_handler.setLevel(logging.INFO)
+        file_handler_format = '%(asctime)s | %(levelname)s | %(lineno)d: %(message)s'
+        file_handler.setFormatter(logging.Formatter(file_handler_format))
 
-        #     # clear log file every 1 day
-        #     rotate = TimedRotatingFileHandler('sample.log', when='D', interval=1, backupCount=0, encoding=None, delay=False, utc=False)
-            
-        #     self.logger.addHandler(rotate)
-        #     self.logger.addHandler(console_handler)
-        #     self.logger.addHandler(file_handler)
+        # clear log file every 1 day
+        rotate = TimedRotatingFileHandler('sample.log', when='D', interval=1, backupCount=0, encoding=None, delay=False, utc=False)
         
-        # except Exception as e:
-        #     print(str(e))
-
-    def initConfig(self):
-        try:
-            ini = self.getPath("app.ini")
-            
-            self.configur = ConfigParser()
-            self.configur.read(ini)
-        except Exception as e:
-            print(str(e))
+        self.logger.addHandler(rotate)
+        self.logger.addHandler(console_handler)
+        self.logger.addHandler(file_handler)
+    
 
     def connect_to_server(self, h, p):
         super().__init__(h,p)
         
+
     def connect_to_postgresql(self):
-        try:            
+        try:
+            ini = self.getPath("app.ini")
+            
+            configur = ConfigParser()
+            configur.read(ini)
+            
             conn = psycopg2.connect(
-                database=self.configur["db"]["db_name"], user=self.configur["db"]["username"], password=self.configur["db"]["password"], host=self.configur["db"]["host"], port=self.configur["db"]["port"]
+                database=configur["db"]["db_name"], user=configur["db"]["username"], password=configur["db"]["password"], host=configur["db"]["host"], port= configur["db"]["port"]
             )
             conn.autocommit = True
             self.db_cursor = conn.cursor()
@@ -217,79 +199,34 @@ class Controller(Client):
 
                 return total_payment
     
-    def barcodeFocus(self):
-        print("==> from barcode focus")
-        nopol = self.components['nopol_transaksi'].text().lower()
+    def nopolFocus(self):
+        # print("==> nopolFocus()")
+        # self.enterBarcode = True
 
-        if nopol!="" and nopol!="bl" and nopol!="bl ":
-            pattern1 = r'^\D+\s+\d{1,4}\s*\D*$'
-            pattern2 = r'^\D+\d{1,4}\s*\D*$'
-
-            match1 = re.match(pattern1, nopol)
-            match2 = re.match(pattern2, nopol)
-
-            if match1 or match2:
-                self.components['barcode_transaksi'].setFocus()
-            else:
-                self.dialogBox(title="Alert", msg="NOPOL tidak valid !")
-                
-    # def nopolFocus(self):
-    #     # print("==> nopolFocus()")
-    #     # self.enterBarcode = True
-
-    #     barcode = self.components['barcode_transaksi'].text()
-    #     nopol = self.components['nopol_transaksi'].text()
+        barcode = self.components['barcode_transaksi'].text()
+        nopol = self.components['nopol_transaksi'].text()
         
-    #     if barcode != "":
-    #         self.components['nopol_transaksi'].setFocus()
+        if barcode != "":
+            self.components['nopol_transaksi'].setFocus()
             
-    #         if nopol == "":
-    #             self.components['nopol_transaksi'].setText("BL ")
-
-
+            if nopol == "":
+                self.components['nopol_transaksi'].setText("BL ")
 
     def getPrice(self, vehicle=None):
         """ this method execute when press enter in barcode lineEdit """
-        
-        print("==> getPrice()")
 
         jns_kendaraan = ""
         status_parkir = ""
         self.diff_formatted = ""
-        self.statGetPrice = True
         try:
 
-            # check if member / voucher first
-            nopol = self.components['nopol_transaksi'].text()
-            nopol = nopol.lower().replace(" ", "")
-            q_voucher = self.exec_query(f"select masa_berlaku,jns_kendaraan from voucher where id_pel='{nopol}'", "select")
-            
-            # if voucher/member return 1 / break from function
-            if len(q_voucher) > 0:
-                # check if voucher active ?
-                # get date now compare to date in voucher
-                self.time_now = datetime.now()
-                date_voucher = datetime.strptime(str(q_voucher[0][0]), "%Y-%m-%d")
-
-                if date_voucher > self.time_now:
-                    jk = q_voucher[0][1].lower()
-                    self.components["jns_kendaraan"].setCurrentText(jk)
-
-                    self.components["ket_status"].setText( "VOUCHER" )
-                    self.components["tarif_transaksi"].setText("0")
-                    
-                    # set focus to tarif
-                    self.components["tarif_transaksi"].setFocus()
-                    return 1
-                
-                elif date_voucher < self.time_now:
-                    self.dialogBox(title="voucher status", msg="VOUCHER SUDAH KADALUARSA ==> HITUNG TARIF NORMAL !")
-            
-            
             # =================== base information ========================
             # get time based on barcode
             barcode = self.components["barcode_transaksi"].text()
             q_karcis_count = self.exec_query(f"select count(*) as jum from karcis where barcode='{barcode}'", "select")
+            # q_voucher_count = self.exec_query(f"select count(*) as jum from voucher where id_pel='{barcode}'", "select")
+
+            # print("==>val: ", query_karcis[0], type(query_karcis[0]))
             
             ############### jika ada data bayar ##############
             if int(q_karcis_count[0][0]) > 0:
@@ -381,95 +318,66 @@ class Controller(Client):
                 # if vehicle is None:
                 #     self.components['nopol_transaksi'].setText("BL ")
 
+                
+
             elif int(q_karcis_count[0][0]) == 0:
-                """ execute when offline ticket """
+                # cek apakah karcis offline ?
+                first_three = barcode[:3]
+                if first_three == "000":
+                    # remove 000
+                    barcode = barcode.replace('000', "")
+                    print("==> offline barcode ", barcode)
+                    # get time delta
+                    
+                    # time_now = datetime.now().strftime("%H%M%S")
 
-                self.time_now = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
-                self.time_now = datetime.strptime(self.time_now, '%Y-%m-%d %H:%M:%S')
+                    # # Convert strings to datetime objects
+                    # dt1 = datetime.strptime(barcode, '%H%M%S')
+                    # dt2 = datetime.strptime(time_now, '%H%M%S')
 
-                if vehicle is None:
-                    self.components["jns_kendaraan"].setFocus()
-                    self.components["jns_kendaraan"].showPopup()
+                    # # Calculate the time difference
+                    # time_diff = dt1 - dt2
 
-                # check vehicle type
-                elif vehicle is not None:
-                    self.components["ket_status"].setText("BELUM LUNAS (OFFLINE)")
+                    # j_kend = self.components["jns_kendaraan"].currentText()
 
-                    # cek apakah karcis offline ?
-                    first_three = barcode[:3]
-                    if first_three == "000":
-                        # remove 000
-                        barcode = barcode.replace('000', "")
-                        print("==> offline barcode ", barcode)
-                        
+                    # print("d1:", dt1)
+                    # print("d2:", dt2)
+                    # print("ini karcis offline", time_diff)
+                    # print("jkend", j_kend)
+                    
 
-                        # # Convert strings to datetime objects
-                        self.date_keluar_offline = datetime.now().replace(microsecond=0)
-                        
-                        year = datetime.now().strftime("%Y-%m-%d")
-                        self.date_masuk_offline = datetime.strptime(year + " " + barcode[:2]+":"+barcode[2:4]+":"+barcode[4:6], "%Y-%m-%d %H:%M:%S")
 
-                        # # Calculate the time difference
-                        self.time_diff_offline = self.date_keluar_offline - self.date_masuk_offline
-                        
-                        parking_seconds = int( self.time_diff_offline.total_seconds() )
-                        parking_seconds = parking_seconds*-1 if parking_seconds<0 else parking_seconds
-
-                        # check tolerance
-                        query = self.exec_query(f"select toleransi, tipe_tarif, rules from tarif where jns_kendaraan='{vehicle}' or jns_kendaraan='{vehicle.lower()}'", "select")
-                        tolerance = int(query[0][0]) * 60
-
-                        # parse rules
-                        rules = json.loads( query[0][2] )
-
-                        if parking_seconds > tolerance:
-                            # cek kategori tarif
-                            if query[0][1] == "other":
-                                tot_pay = self.calculate_parking_payment(rules, parking_seconds)
-                                
-                                self.components["tarif_transaksi"].setText( str(tot_pay) )
-
-                            elif query[0][1] == "flat":
-                                # tarif flat artinya tarif konstan
-                                # get first key:value from json rules
-                                key,value = next( iter(rules.items()) )
-
-                                # set lineEdit
-                                self.components["tarif_transaksi"].setText( str(value) )
-
-                            
-                            elif query[0][1] == "progresif":
-                                # tarif artinya kelipatan dari jam yg di set
-                                h1,value = next( iter(rules.items()) )
-                                h1 = int(h1)
-                                value = int(value)
-
-                                ph = math.floor(parking_seconds/3600)
-                                h1_seconds = h1 * 60 * 60
-                                final_price = 0
-
-                                if parking_seconds>h1_seconds:
-                                    mod = parking_seconds % 3600
-
-                                    # exact multiple
-                                    if mod==0:
-                                        final_price = ph * value 
-                                    elif mod>0:
-                                        ph =math.floor( ph/h1 )
-                                        final_price = ( ph  * value) + value
-                                        
-                                elif parking_seconds <= h1_seconds:
-                                    final_price = value
-                                
-                                # set lineEdit
-                                self.components["tarif_transaksi"].setText( str(final_price) )
-                            
-                        elif parking_seconds < tolerance:
-                            self.components["ket_status"].setText("FREE")
-                            self.components["tarif_transaksi"].setText("0")
-                        
-            self.components["tarif_transaksi"].setFocus()
+            #     # jika data karcis tidak ada, cari di voucher
+            #     if int(q_voucher_count[0][0]) > 0:
+            #         # get jns_kendaraan from voucher based on id_pel
+                    
+            #         q_jns = self.exec_query(f"select jns_kendaraan from voucher where id_pel='{barcode}'", "select")
+            #         jk = q_jns[0][0].lower()
+            #         self.components["jns_kendaraan"].setCurrentText(jk)
+                    
+            #         self.components["ket_status"].setText( "VOUCHER" )
+            #         self.components["tarif_transaksi"].setText("0")
+                    
+            #     elif int(q_voucher_count[0][0]) == 0:
+            #         self.clearKasirForm()
             
+            ################################################
+
+            ############### jika ada data voucher ##############
+            
+
+            # else:
+            #     self.clearKasirForm()
+
+            ###################################################
+
+            # if int(q_karcis_count[0][0]) > 0:
+                
+            #     # set focused on nopol
+            #     self.components['nopol_transaksi'].setFocus()
+            #     if vehicle is None:
+            #         self.components['nopol_transaksi'].setText("BL ")
+
 
         except Exception as e:
             # clear text box if false input barcode
@@ -480,10 +388,9 @@ class Controller(Client):
     def clearKasirForm(self):
         self.components["barcode_transaksi"].setText("")
         self.components["jns_kendaraan"].setCurrentIndex(0)
-        self.components["nopol_transaksi"].setText("BL ")
+        self.components["nopol_transaksi"].setText("")
         self.components["ket_status"].setText("")
         self.components["tarif_transaksi"].setText("")
-        self.components["lbl_ket_karcis"].setText("")
 
     def changeVehicle(self):
         # update price
@@ -498,6 +405,7 @@ class Controller(Client):
     
     def kasirWindowEnter(self):
         print("==> kasirWindowEnter()")
+        # print("lost ticket", Controller.lostTicket_form)
         
         # check if barcode  and nopol filled ?
         barcode = self.components['barcode_transaksi'].text()
@@ -510,17 +418,48 @@ class Controller(Client):
 
         # check nopol format
         if barcode != "" and nopol != "":
-                
-            # check if all form field is filled
-            # if kendaraan != "--" and stat != "lunas" and tarif != "":
-            if kendaraan != "--" and stat != "" and tarif != "":
-                
-                print("==> masuk filter")
-                if stat== "belum lunas (offline)":
-                    self.setPay(statOnline=False)
-                else:
+            pattern1 = r'^\D+\s+\d{1,4}\s*\D*$'
+            pattern2 = r'^\D+\d{1,4}\s*\D*$'
+
+            match1 = re.match(pattern1, nopol)
+            match2 = re.match(pattern2, nopol)
+
+            if match1 or match2:
+
+                # check if all form field is filled
+                if kendaraan != "--" and stat != "" and tarif != "":
                     self.setPay()
-                                    
+                    return 1
+
+                nopol = nopol.lower().replace(" ", "")
+
+                # check if nopol has active voucher
+                q_voucher = self.exec_query(f"select masa_berlaku,jns_kendaraan from voucher where id_pel='{nopol}'", "select")
+                
+                if len(q_voucher) > 0:
+                    # check if voucher active ?
+                    
+                    # get date now compare to date in voucher
+                    # today = datetime.today()
+                    self.time_now = datetime.now()
+                    date_voucher = datetime.strptime(str(q_voucher[0][0]), "%Y-%m-%d")
+                    
+                    # if active ,set voucher field 
+                    if date_voucher > self.time_now:
+                        jk = q_voucher[0][1].lower()
+                        self.components["jns_kendaraan"].setCurrentText(jk)
+
+                        self.components["ket_status"].setText( "VOUCHER" )
+                        self.components["tarif_transaksi"].setText("0")
+                
+                    # if not active, set normal pay
+                    elif date_voucher < self.time_now:
+                        self.dialogBox(title="voucher status", msg="VOUCHER SUDAH KADALUARSA ==> HITUNG TARIF NORMAL !")
+                        self.getPrice()
+
+
+                elif len(q_voucher) == 0:
+                    self.getPrice()
                     
            
     def hideSuccess(self):
@@ -563,7 +502,7 @@ class Controller(Client):
         uname = self.components["add_uname"].text()    
         passwd = self.components["add_pass"].text()    
         retype_passwd = self.components["retype_pass"].text()    
-        user_level = self.components["input_user_level"].currentText().lower()    
+        user_level = self.components["input_user_level"].currentText()    
         
         if passwd == retype_passwd:
 
@@ -657,23 +596,31 @@ class Controller(Client):
             timer = threading.Timer(1.0, self.hideSuccess)
             timer.start()        
     
-    def setPay(self, statOnline=True):
-        arduino = None
-        try:
-            arduino = serial.Serial(port='COM4', baudrate=115200, timeout=.1)
-        except:
-            self.dialogBox(title="Alert", msg="SERIAL BUKA GATE, TIDAK TERSAMBUNG !")
-            return 0
-                
+    def setPay(self):
         # get barcode
         barcode = self.components["barcode_transaksi"].text()
         nopol = self.components["nopol_transaksi"].text()
-        kendaraan = self.components["jns_kendaraan"].currentText().lower()
-        stat = self.components["ket_status"].text().lower()
+        kendaraan = self.components["jns_kendaraan"].currentText()
+        stat = self.components["ket_status"].text()
+        stat = stat.lower()
         tarif = self.components["tarif_transaksi"].text()
 
+        # pattern1 = r'^\D+\s+\d{1,4}\s*\D*$'
+        # pattern2 = r'^\D+\d{1,4}\s*\D*$'
+
+        # try:
+        #     match1 = re.match(pattern1, nopol)
+        #     match2 = re.match(pattern2, nopol)
+            
+        #     if (barcode != "" and nopol != "" and kendaraan != "" 
+        #         and stat == "belum lunas" and tarif != "" and
+        #         (match1 or match2)):
+            
+        # update status to true, tarif and date_keluar
+        # self.time_now = datetime.strptime(self.time_now, '%Y-%m-%d %H:%M:%S')
         
         dt_keluar = self.time_now.strftime('%Y-%m-%d %H:%M:%S')
+        # dt_keluar = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
         if self.diff_formatted == "" : self.diff_formatted = "00:00:00"
 
         jns_trans = "voucher" if self.components['ket_status'].text().lower() == "voucher" else "casual"
@@ -682,17 +629,8 @@ class Controller(Client):
         print("jns trans: ", jns_trans)
         print("==========*******==========")
 
-        if statOnline:
-            # print("==> UPDATE KARCIS")
-            self.exec_query(f"update karcis set status_parkir=true, jenis_kendaraan='{kendaraan}', tarif='{tarif}', date_keluar='{dt_keluar}', lama_parkir='{self.diff_formatted}', jns_transaksi='{jns_trans}' where barcode='{barcode}'")
-        else:
-            date_masuk = str(self.date_masuk_offline)
-            date_keluar = str(self.date_keluar_offline)
-            lama_parkir = str(self.time_diff_offline)
-            kd_shift = Controller.kd_shift
-            print(f"insert into karcis (barcode, datetime, status_parkir, jenis_kendaraan, date_keluar, lama_parkir, tarif, nopol, kd_shift, jns_transaksi, images_path_keluar) values ('{barcode}', '{date_masuk}', true, '{kendaraan}', '{date_keluar}', '{lama_parkir}', '{tarif}', '{nopol}', '{kd_shift}', '{jns_trans}', '[IMG_PATH_KELUAR]')")
-            self.exec_query(f"insert into karcis (barcode, datetime, status_parkir, jenis_kendaraan, date_keluar, lama_parkir, tarif, nopol, kd_shift, jns_transaksi, images_path_keluar) values ('{barcode}', '{date_masuk}', true,'{kendaraan}', '{date_keluar}', '{lama_parkir}', '{tarif}', '{nopol}', '{kd_shift}', '{jns_trans}', '[IMG_PATH_KELUAR]')")
-
+        self.exec_query(f"update karcis set status_parkir=true, jenis_kendaraan='{kendaraan}', tarif='{tarif}', date_keluar='{dt_keluar}', lama_parkir='{self.diff_formatted}', jns_transaksi='{jns_trans}' where barcode='{barcode}'")
+        
         # clear all text box and disable input
         self.clearKasirForm()
         
@@ -701,7 +639,11 @@ class Controller(Client):
         # self.s.sendall( bytes('gate#'+self.ip_raspi+'#end', 'utf-8') )
 
         # set focus back to input barcode
-        self.components['nopol_transaksi'].setFocus()
+        self.components['barcode_transaksi'].setFocus()
+
+        # modal
+        # self.dialogBox(title="Alert", msg="Payment success --> OPEN GATE KELUAR")
+        arduino = serial.Serial(port='COM4', baudrate=115200, timeout=.1)
 
         while True:
             arduino.write(bytes("1", 'utf-8'))
@@ -712,7 +654,7 @@ class Controller(Client):
             time.sleep(0.01)
 
         print("gate open ... ")
-        
+
             # else:
             #     nopol = nopol.replace(' ', '').lower()
 

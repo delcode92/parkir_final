@@ -1,4 +1,4 @@
-import sys,cv2,os, json, logging, re, serial, time
+import sys,cv2,os, json, logging, re
 from framework import *
 # from kasir_ipcam import *
 from _thread import start_new_thread
@@ -20,13 +20,11 @@ class Main(Util, View):
     no_pos = ""
     kd_shift = ""
     kasir_uname = ""
-    dialog_roller = None
 
     def __init__(self) -> None:
         # 1. initialize important property & method from all parents
         # exampel : in Components Class --> self.components = {}
         super().__init__()
-        self.initConfig()
 
         # initialize font
         self.helvetica_12 = ("Helvetica", 12, 40)
@@ -42,14 +40,6 @@ class Main(Util, View):
         # create thread for connect to server
         start_new_thread(self.connect_to_server, ( sys.argv[1], sys.argv[2] ))
         
-    def initConfig(self):
-        try:
-            ini = self.getPath("app.ini")
-            
-            self.configur = ConfigParser()
-            self.configur.read(ini)
-        except Exception as e:
-            print(str(e))
 
     def setMenuClicked(self, button=None, label=None, page=""):
         button.clicked.connect(lambda: self.windowBarAction(page))
@@ -911,131 +901,16 @@ class Main(Util, View):
     def findVoucher(self):
         print("search voucher status ... ")
     
-    def nopolEnter(self):
-        """this method execute whenenter pressed in lost ticket dialog box"""
-        # check if nopol valid ?
-        pattern1 = r'^\D+\s+\d{1,4}\s*\D*$'
-        pattern2 = r'^\D+\d{1,4}\s*\D*$'
-
-        match1 = re.match(pattern1, self.inpt_nopol_lost.text())
-        match2 = re.match(pattern2, self.inpt_nopol_lost.text())
-
-        if match1 or match2:
-
-            # check if all field is filled
-            if self.inpt_nopol_lost.text() != "" and self.jns_kendaraan_lost.currentText() != "--":
-                date_now = datetime.now()
-                date_now = date_now.strftime("%Y-%m-%d %H:%M:%S")
-
-                q = self.exec_query(f"""insert into karcis (
-                    barcode, gate, 
-                    status_parkir, jenis_kendaraan, 
-                    date_keluar, tarif, nopol, 
-                    kd_shift, jns_transaksi, 
-                    images_path_keluar, lost_ticket) 
-                    values('000000', '{Main.no_pos}', true, 
-                    '{self.jns_kendaraan_lost.currentText()}', 
-                    '{date_now}', {int(self.denda)}, 
-                    '{self.inpt_nopol_lost.text()}', '{Main.kd_shift}', 'casual', '[IMG_PATH_KELUAR]', true  )""")
-                
-                arduino = serial.Serial(port=self.configur["serial"]["port"], baudrate=115200, timeout=.1)
-
-                # open gate
-                while True:
-                    arduino.write(bytes("1", 'utf-8'))
-                    data = arduino.readline()
-
-                    n = len( data.decode('utf-8') )
-                    if n > 0 : break;
-                    time.sleep(0.01)
-
-
-                print("from setpay: ==> buka gate")
-                
-                # rest form
-                self.inpt_nopol_lost.setText("")
-                self.jns_kendaraan_lost.setCurrentIndex(0)
-                self.tarif_lost.setText("...")
-                
-            elif self.inpt_nopol.text() != "" and self.jns_kendaraan_lost.currentText() == "--":
-                self.focusDropDown()
-                
-        else:
-            dlg = QMessageBox()
-    
-            dlg.setWindowTitle("Alert")
-            dlg.setText("Nopol Tidak Valid!")
-            dlg.setIcon(QMessageBox.Information)
-            dlg.exec()
-
+   
     def lostTicket(self):
-        # dialog = QDialog()
-        # dialog.resize(400, 350)
-        # dialog.setContentsMargins(15,15,15,15)
-        # dialog.setWindowTitle("Lost Ticket")
-
-        # layout = QVBoxLayout(dialog)
-        # self.inpt_nopol_lost = QLineEdit()
-        # self.jns_kendaraan_lost = QComboBox()
-        # stat = QLabel("LOST TICKET")
-        # self.tarif_lost = QLabel("...")
-        # nopol = QLabel("NOPOL:")
-        # jns_kend_lbl = QLabel("JENIS KENDARAAN:")
-        # stat_lbl = QLabel("STATUS:")
-        # tarif_lbl = QLabel("TARIF(Rp):")
-
-        # css = "margin-top:15px; font-size:13px; font-weight:500;"
-
-        # self.inpt_nopol_lost.setStyleSheet("font-weight:500; font-size: 13px; height: 35px;")
-        # self.jns_kendaraan_lost.setStyleSheet("font-weight:500; font-size: 13px; height: 35px;")
-        # nopol.setStyleSheet("font-weight:500;")
-        # jns_kend_lbl.setStyleSheet(css)
-        # stat_lbl.setStyleSheet(css)
-        # tarif_lbl.setStyleSheet(css)
-
-        # stat.setStyleSheet("height: 45px; padding:8px; font-weight: 600; font-size:16px; background:#ffeaa7;")
-        # self.tarif_lost.setStyleSheet("height: 45px; padding:8px; font-weight: 600; font-size:16px; background:#ffeaa7;")
         
-        # ########### list kendaraan #######
-        # list_kendaraan = ["--"]
-        # query = self.exec_query(f"select jns_kendaraan from tarif", "select")
-        # for i in range( len(query) ):
-        #     list_kendaraan.append(query[i][0].lower())
-
-        # self.jns_kendaraan_lost.addItems( list_kendaraan )
-        # ############## end #############
-
-
-        # layout.addWidget( nopol )
-        # layout.addWidget(self.inpt_nopol_lost)
-        
-        # layout.addWidget( jns_kend_lbl )
-        # layout.addWidget(self.jns_kendaraan_lost)
-        
-        # layout.addWidget(stat_lbl)
-        # layout.addWidget(stat)
-        
-        # layout.addWidget(tarif_lbl)
-        # layout.addWidget(self.tarif_lost)
-        
-        # layout.addStretch(1)
-
-        # # binder
-        # EventBinder(self.inpt_nopol_lost, self.nopolEnter)
-        # self.jns_kendaraan_lost.activated.connect(self.changeVehicle)
-
-        # dialog.exec_()
-
         import psycopg2, serial, time
 
         class PopupWindow(QDialog):
             
             def __init__(self, query):
+                # super().__init__(parent)
                 super().__init__()
-                self.initConfig()
-                # super().__init__()
-                # super().ini
-                # print(super(), type(super()))
                 
                 self.resize(400, 350)
                 self.setContentsMargins(15,15,15,15)
@@ -1075,6 +950,7 @@ class Main(Util, View):
                 layout.addWidget( nopol )
                 layout.addWidget(self.inpt_nopol)
                 
+
                 layout.addWidget( jns_kend_lbl )
                 layout.addWidget(self.jns_kendaraan)
                 
@@ -1094,15 +970,6 @@ class Main(Util, View):
                 self.setWindowModality(Qt.ApplicationModal)
                 self.setWindowTitle("Lost Ticket")
             
-            def initConfig(self):
-                try:
-                    ini = self.getPath("app.ini")
-                    
-                    self.configur = ConfigParser()
-                    self.configur.read(ini)
-                except Exception as e:
-                    print(str(e))
-
             def getPath(self,fileName):
                 path = os.path.dirname(os.path.realpath(__file__))
                 
@@ -1110,9 +977,13 @@ class Main(Util, View):
     
             def connect_to_postgresql(self):
                 try:
+                    ini = self.getPath("app.ini")
+                    
+                    configur = ConfigParser()
+                    configur.read(ini)
                     
                     conn = psycopg2.connect(
-                        database=self.configur["db"]["db_name"], user=self.configur["db"]["username"], password=self.configur["db"]["password"], host=self.configur["db"]["host"], port= self.configur["db"]["port"]
+                        database=configur["db"]["db_name"], user=configur["db"]["username"], password=configur["db"]["password"], host=configur["db"]["host"], port= configur["db"]["port"]
                     )
                     conn.autocommit = True
                     self.db_cursor = conn.cursor()
@@ -1154,10 +1025,7 @@ class Main(Util, View):
 
                     # check if all field is filled
                     if self.inpt_nopol.text() != "" and self.jns_kendaraan.currentText() != "--":
-                        # PopupWindow.sp(lostTicket=True)
-
                         self.setPay()
-                        # super().setpay()
 
                     elif self.inpt_nopol.text() != "" and self.jns_kendaraan.currentText() == "--":
                         self.focusDropDown()
@@ -1235,7 +1103,7 @@ class Main(Util, View):
         dlg.setText(
         """
         CTRL + h ==> HELP  \n\n
-        CTRL + t ==> NOPOL Focus \n\n
+        CTRL + t ==> Barcode Focus \n\n
         CTRL + e ==> LOGOUT \n\n
         CTRL + o ==> Open Gate(darurat) \n\n
         CTRL + l ==> Lost Ticket
@@ -3061,7 +2929,7 @@ class Main(Util, View):
                 lbl_shift.setStyleSheet( View.primary_lbl + " height: 25px; }" )
                 self.input_cari.setStyleSheet( View.primary_input + " height: 25px; }" )
                 
-                self.pilih_tgl1.setStyleSheet( View.primary_date + "width: 250px; height: 25px; border: 2px solid red; }" )
+                self.pilih_tgl1.setStyleSheet( View.primary_date + "width: 250px; height: 25px; }" )
                 self.pilih_tgl2.setStyleSheet( View.primary_date + "width: 250px; height: 25px; }" )
                 
                 self.pilih_jns_kendaraan.setStyleSheet( View.primary_combobox + " height: 25px; background:#fff; color: #000; }" )
@@ -3344,6 +3212,10 @@ class Main(Util, View):
     def KasirDashboard(self):
         
         ####### get ipcam ip ########
+        ini = self.getPath(fileName="app.ini")
+            
+        configur = ConfigParser()
+        configur.read(ini)
         
         self.kasir_uname = self.components["input_uname"].text().lower()
         Main.kasir_uname = self.components["input_uname"].text().lower()
@@ -3355,63 +3227,44 @@ class Main(Util, View):
         # ========== for lost ticket & offline ticket ===============
         Main.no_pos = q_kasir[0][4]
         Main.kd_shift = q_kasir[0][5]
-        Controller.kd_shift = q_kasir[0][5]
         # ===========================================================
 
-        ipcam1 = self.configur[f"gate{no_pos}"]["ipcam1"]
-        ipcam2 = self.configur[f"gate{no_pos}"]["ipcam2"]
+        ipcam1 = configur[f"gate{no_pos}"]["ipcam1"]
+        ipcam2 = configur[f"gate{no_pos}"]["ipcam2"]
         ##############################
 
             
         class Debug():
-            def __init__(self, stat) -> None:
-                self.stat = stat
+            def __init__(self) -> None:
+                self.logger = logging.getLogger()
+                self.logger.setLevel(logging.NOTSET)
+                self.logfile_path = "./logging/log_file.log"
 
-            def debug(self, msg):
-                if self.stat: print(msg)
-            def info(self, msg):
-                if self.stat: print(msg)
-            def error(self, msg):
-                if self.stat: print(msg)
-                
-            # def __init__(self) -> None:
-            #     self.logger = logging.getLogger()
-            #     self.logger.setLevel(logging.NOTSET)
-            #     self.logfile_path = "./logging/log_file.log"
+                # our first handler is a console handler
+                console_handler = logging.StreamHandler()
+                console_handler.setLevel(logging.DEBUG)
+                console_handler_format = '%(levelname)s: %(message)s'
+                console_handler.setFormatter(logging.Formatter(console_handler_format))
 
-            #     # our first handler is a console handler
-            #     console_handler = logging.StreamHandler()
-            #     console_handler.setLevel(logging.DEBUG)
-            #     console_handler_format = '%(levelname)s: %(message)s'
-            #     console_handler.setFormatter(logging.Formatter(console_handler_format))
+                # start logging and show messages
 
-            #     # start logging and show messages
+                # the second handler is a file handler
+                file_handler = logging.FileHandler(self.logfile_path)
+                file_handler.setLevel(logging.INFO)
+                file_handler_format = '%(asctime)s | %(levelname)s | %(lineno)d: %(message)s'
+                file_handler.setFormatter(logging.Formatter(file_handler_format))
 
-            #     # the second handler is a file handler
-            #     file_handler = logging.FileHandler(self.logfile_path)
-            #     file_handler.setLevel(logging.INFO)
-            #     file_handler_format = '%(asctime)s | %(levelname)s | %(lineno)d: %(message)s'
-            #     file_handler.setFormatter(logging.Formatter(file_handler_format))
-
-            #     self.logger.addHandler(console_handler)
-            #     self.logger.addHandler(file_handler)
+                self.logger.addHandler(console_handler)
+                self.logger.addHandler(file_handler)
 
         
-        class checkRoller(QThread):
-            cr = pyqtSignal(str)
-            
-            def run(self):
-                while True:
-                    self.cr.emit("emit txt")
-                    sleep(5*60*60)
-
         class playCam1(QThread):
             
             cp = pyqtSignal(QImage)
             def run(self):
-                debug = Debug(1)
+                debug = Debug()
                 
-                debug.info("Run Cam Thread 1 ...")
+                debug.logger.info("Run Cam Thread 1 ...")
 
                 self.is_running = True
                 self.capture = None
@@ -3421,11 +3274,11 @@ class Main(Util, View):
 
                         if not self.capture:
                             rtsp = ipcam1        
-                            debug.info("Run video capture from --> "+ rtsp)
+                            debug.logger.info("Run video capture from --> "+ rtsp)
                             self.capture = cv2.VideoCapture(rtsp)
                             
                         elif not ret:
-                            debug.error("Failed to read from video stream!")
+                            debug.logger.error("Failed to read from video stream!")
                             raise Exception("Failed to read from video stream!")   
                         
                         ret, frame = self.capture.read()
@@ -3444,11 +3297,11 @@ class Main(Util, View):
                         self.msleep(5000)
                         self.is_running = True
 
-                        debug.info("something wrong with ipcam 1 .... ")
-                        debug.error(str(e))
-                        debug.info("retrying to connect.... ")
+                        debug.logger.info("something wrong with ipcam 1 .... ")
+                        debug.logger.error(str(e))
+                        debug.logger.info("retrying to connect.... ")
                 else:
-                    debug.info("IP CAM 1 not connected ... ")
+                    debug.logger.info("IP CAM 1 not connected ... ")
 
             def stop(self):
                 self.terminate()
@@ -3459,9 +3312,9 @@ class Main(Util, View):
             
             cp2 = pyqtSignal(QImage)
             def run(self):
-                debug = Debug(1)
+                debug = Debug()
                 
-                debug.info("Run Cam Thread 2 ...")
+                debug.logger.info("Run Cam Thread 2 ...")
 
                 self.is_running = True
                 self.capture = None
@@ -3471,11 +3324,11 @@ class Main(Util, View):
 
                         if not self.capture:
                             rtsp = ipcam2        
-                            debug.info("Run video capture from --> "+ rtsp)
+                            debug.logger.info("Run video capture from --> "+ rtsp)
                             self.capture = cv2.VideoCapture(rtsp)
                             
                         elif not ret:
-                            debug.error("Failed to read from video stream!")
+                            debug.logger.error("Failed to read from video stream!")
                             raise Exception("Failed to read from video stream!")   
                         
                         ret, frame = self.capture.read()
@@ -3494,11 +3347,11 @@ class Main(Util, View):
                         self.msleep(5000)
                         self.is_running = True
 
-                        debug.info("something wrong with ipcam 1 .... ")
-                        debug.error(str(e))
-                        debug.info("retrying to connect.... ")
+                        debug.logger.info("something wrong with ipcam 1 .... ")
+                        debug.logger.error(str(e))
+                        debug.logger.info("retrying to connect.... ")
                 else:
-                    debug.info("IP CAM 1 not connected ... ")
+                    debug.logger.info("IP CAM 1 not connected ... ")
 
             def stop(self):
                 self.terminate()
@@ -3609,7 +3462,8 @@ class Main(Util, View):
         for i in range( len(q_kendaraan) ):
             list_kendaraan.append(q_kendaraan[i][0].lower())
         
-        left_content = [{
+        left_content = [
+                    {
                         "name":"lbl_stat_koneksi",
                         "text":"STAT:",
                         "category":"label",
@@ -3645,51 +3499,40 @@ class Main(Util, View):
                         "category":"label",
                         "style":self.primary_lbl + "background: #0984e3; padding:5px; color: #fff;"
                     },
-                    {
-                        "name":"lbl_legenda",
-                        "text":"*NOTE:",
-                        "category":"label",
-                        "style":self.primary_lbl + "margin-top: 25px;"
-                    },
-                    {
-                        "name":"lbl_legenda",
-                        "text":"Tekan CTRL+h --> untuk menu legenda/ket.shortcut",
-                        "category":"label",
-                        "style":self.primary_lbl + "background: #0984e3; padding:5px; color: #fff; font-style:italic;"
-                    }]
+                    
+                ]
     
-        self.statGetPrice = False
-
         center_content = [
                     {
-                       "name":"lbl_nopol",
-                        "text":"NOPOL:",
+                        "name":"lbl_barcode_transaksi",
+                        "text":"BARCODE/VOUCHER:",
                         "category":"label",
                         "style":self.primary_lbl + "color:#f1c40f;"
-                    },
-                    {
-                        "name":"nopol_transaksi",
-                        "category":"lineEdit",
-                        "style": self.primary_input + "font-weight: 600;",
-                        "text":"BL ",
-                        "event": {
-                            "method_name": self.barcodeFocus
-                        }
-                    },
-                    {
-                        "name":"lbl_barcode_transaksi",
-                        "text":"BARCODE:",
-                        "category":"label",
-                        "style":self.primary_lbl + "margin-top:20px; color:#f1c40f;"
                     },
                     {
                         "name":"barcode_transaksi",
                         "category":"lineEditInt",
                         "style": self.primary_input + "font-weight: 600;",
                         "event": {
-                            "method_name": self.getPrice
+                            "method_name": self.nopolFocus
                         }
-                    },                    
+                    },
+                    {
+                       "name":"lbl_nopol",
+                        "text":"NOPOL:",
+                        "category":"label",
+                        "style":self.primary_lbl + "margin-top:20px; color:#f1c40f;"
+                    },
+                    {
+                        "name":"nopol_transaksi",
+                        "category":"lineEdit",
+                        "style": self.primary_input + "font-weight: 600;",
+                        # "event":{
+                        #     "trigger": "tab",
+                        #     "method_name": self.comboPopup,
+                        #     "arguments": self.components['jns_kendaraan']
+                        # }
+                    },
                     {
                         "name":"lbl_jns_kendaraan",
                         "text":"JENIS KENDARAAN:",
@@ -3725,9 +3568,6 @@ class Main(Util, View):
                         "category":"lineEdit",
                         "editable": False,
                         "style": self.primary_input + "height: 45px; font-weight: 600; font-size:23px; background:#ffeaa7;",
-                        "event": {
-                            "method_name": self.kasirWindowEnter
-                        }
                     },
                     {
                         "name":"lbl_ket_karcis",
@@ -3753,8 +3593,8 @@ class Main(Util, View):
         # print("==> binder1: ", self.components['nopol_transaksi'], type(self.components['nopol_transaksi']))
         # print("==> binder2: ", self.window, type(self.window))
 
-        EventBinder(self.components['barcode_transaksi'],lambda: self.comboPopup(self.components['jns_kendaraan']), "tab")
-        # EventBinder(self.window, self.kasirWindowEnter ) # binder for pay
+        EventBinder(self.components['nopol_transaksi'],lambda: self.comboPopup(self.components['jns_kendaraan']), "tab")
+        EventBinder(self.window, self.kasirWindowEnter )
         self.components['jns_kendaraan'].activated.connect(self.changeVehicle)
 
 
@@ -3787,19 +3627,11 @@ class Main(Util, View):
         # self.th2 = playCam2(parent=self.window)
         # self.th2.cp2.connect(self.setImageKasir2) 
         # self.th2.start()
-        
-
-        # disable check roller
-        # self.cr = checkRoller(parent=self.window)
-        # self.cr.cr.connect(self.cRoller)
-        # self.cr.start()
-        # =================================================
-
+        # =================================================================================
 
         # roller_thread = checkRoller(parent=self.window)   
         # roller_thread.uname(self.kasir_uname)
         # roller_thread.start()
-        # start_new_thread(self.checkRoller, ())
 
         # self.cap_1 = cv2.VideoCapture(self.stream_url_1)
         # self.cap_2 = cv2.VideoCapture(self.stream_url_2)
@@ -3832,9 +3664,7 @@ class Main(Util, View):
 
         ###### set date & time value
 
-        # Get & set current date from server via socket
-        gd = self.get_date()
-        
+        # Get & set current date
         current_date = QDate.currentDate().toString('MM/dd/yyyy')
         date_lbl.setText("TANGGAL: " + current_date)
 
@@ -3855,7 +3685,7 @@ class Main(Util, View):
         
         ################# create shortcut key #################
         # transaksi
-        self.keyShortcut(keyCombination="Ctrl+t", targetWidget=self.components["nopol_transaksi"])
+        self.keyShortcut(keyCombination="Ctrl+t", targetWidget=self.components["barcode_transaksi"])
         
         # search voucher
         self.keyShortcut(keyCombination="Ctrl+f", command="search-voucher")
@@ -3882,33 +3712,6 @@ class Main(Util, View):
         self.window.setCentralWidget(main_widget)
         self.window.show()
 
-    def cRoller(self):
-        print("from check roller method")
-        
-        res = self.exec_query(f"select roller_stat, no_pos from kasir where nama='{Main.kasir_uname}'", "select")
-        
-        if not res[0][0]:
-            
-            print("roller habis, gate:", res[0][1])
-            
-            try:
-                print("Main stat:", Main.dialog_roller.isVisible())
-                        
-                if Main.dialog_roller is None or not Main.dialog_roller.isVisible():
-
-                    Main.dialog_roller = QMessageBox(self.window)
-                    Main.dialog_roller.setWindowTitle( "roller habis" )
-                    Main.dialog_roller.setText( "Tolong diganti" )
-                    # self.dialog_roller.setIcon(QMessageBox.Information)
-                    Main.dialog_roller.exec_()
-            
-            except:
-                    Main.dialog_roller = QMessageBox(self.window)
-                    Main.dialog_roller.setWindowTitle( "roller habis" )
-                    Main.dialog_roller.setText( "Tolong diganti" )
-                    # self.dialog_roller.setIcon(QMessageBox.Information)
-                    Main.dialog_roller.exec_()
-
     def updateTime(self):
         # Get current time
         current_time = QTime.currentTime().toString('hh:mm:ss')
@@ -3917,29 +3720,27 @@ class Main(Util, View):
         self.time_lbl.setText("JAM: "+ current_time)
     
     def kasirLogout(self):
-        # self.th.stop()
-        # self.th2.stop()    
-        try:
-            self.closeWindow(self.window)
-            self.Login()
-        except Exception as e:
-            print(str(e))
-
+        self.th.stop()
+        self.th2.stop()    
+        
+        self.closeWindow(self.window)
+        self.Login()
+        
     def setImageKasir(self, image):
         try:
             self.image_label.setPixmap(QPixmap.fromImage(image))
             
         except Exception as e:
-            self.debug.info("Something wrong with set image frame to QLabel ...")
-            self.debug.error(str(e))
+            self.debug.logger.info("Something wrong with set image frame to QLabel ...")
+            self.debug.logger.error(str(e))
     
     def setImageKasir2(self, image):
         try:
             self.image_label2.setPixmap(QPixmap.fromImage(image))
             
         except Exception as e:
-            self.debug.info("Something wrong with set image frame to QLabel ...")
-            self.debug.error(str(e))
+            self.debug.logger.info("Something wrong with set image frame to QLabel ...")
+            self.debug.logger.error(str(e))
        
 
 
