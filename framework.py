@@ -537,7 +537,7 @@ class EventBinder(QObject):
     def eventFilter(self, source, event):
         if event.type() == QEvent.KeyPress and source is self.target:
             if self.key_trigger is None:
-                if event.key() == Qt.Key_Return:
+                if event.key() == Qt.Key_Return or event.key() == Qt.Key_Enter:
                     # print('===> Enter pressed bro')
                     self.eventTarget() # run method
 
