@@ -4017,15 +4017,15 @@ class Main(Util, View):
         # self.stream_url_2 = 'http://192.168.100.69:4747/video'
 
         # ======================= enable / disable cam thread for kasir ===================
-        self.th = playCam1()
-        self.th = playCam1(parent=self.window)
-        self.th.cp.connect(self.setImageKasir) 
-        self.th.start()
+        # self.th = playCam1()
+        # self.th = playCam1(parent=self.window)
+        # self.th.cp.connect(self.setImageKasir) 
+        # self.th.start()
         
-        self.th2 = playCam2()
-        self.th2 = playCam2(parent=self.window)
-        self.th2.cp2.connect(self.setImageKasir2) 
-        self.th2.start()
+        # self.th2 = playCam2()
+        # self.th2 = playCam2(parent=self.window)
+        # self.th2.cp2.connect(self.setImageKasir2) 
+        # self.th2.start()
         
 
         # disable check roller
