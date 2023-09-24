@@ -10,7 +10,6 @@ import os,sys, re, socket, psycopg2, logging, datetime, json, multiprocessing
 import typing
 from PyQt5.QtCore import QObject
 from time import sleep
-from cv2 import add
 from _thread import start_new_thread
 from framework import *
 from configparser import ConfigParser
@@ -459,7 +458,8 @@ class IPCam(Util, View):
 
     def __init__(self, multiproc_conn) -> None:
         
-        
+        print("\n\n ===> from ip cam \n\n")
+
         self.cam_comp = {}
         self.lbl_comp = {}
         self.debug = Debug()
@@ -847,7 +847,7 @@ class Server:
                                 today = datetime.datetime.now()
                                 dt = today.strftime("%Y-%m-%d %H:%M:%S")
 
-                                self.debug.debug(f"Send date to client {add}")
+                                self.debug.debug(f"Send date to client {addr}")
                                 conn.sendall( bytes(f"date#{dt}#end", 'utf-8') )
                             except Exception as e:
                                 self.debug.debug("getdate between substring not found ... ")
@@ -890,7 +890,7 @@ class Server:
                                 time = int(time)
                                 # insert into karcis (datetime) values('2023-01-05 10:43:50.866085');
                                 dt = f'{Y}-{M}-{D} {h}:{m}:{s}'
-                                q = f"insert into karcis (barcode, datetime, gate, jenis_kendaraan, ip_raspi) values ('{barcode}', '{dt}', '{gate}', '{jns_kendaraan}', '{ip_raspi}')";
+                                q = f"insert into karcis (barcode, datetime, gate, jenis_kendaraan, ip_raspi) values ('{barcode}', '{dt}', '{gate}', '{jns_kendaraan}', '{ip_raspi}')"
                                 self.exec_query(q)
 
                                 # set filename from ip cam class
@@ -997,7 +997,9 @@ class Server:
     def exec_query(self, query, type=""):
         try:
             self.db_cursor.execute(query)
-            self.debug.debug("\nsuccess execute query")
+            self.logger.info("\n\nsuccess execute query:")
+            self.logger.info(query)
+            self.logger.info("================\n\n")
 
             if type == "":    
                 return True

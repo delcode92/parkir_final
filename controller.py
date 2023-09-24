@@ -109,7 +109,9 @@ class Controller(Client):
         
         try:
             self.db_cursor.execute(query)
-            self.logger.info("\nsuccess execute query")
+            self.logger.info("\n\nsuccess execute query:")
+            self.logger.info(query)
+            self.logger.info("================\n\n")
 
             if type.lower() == "":    
                 return True
@@ -134,6 +136,7 @@ class Controller(Client):
         
         uname = self.components["input_uname"].text()
         passwd = self.components["input_pass"].text()
+        
         q = self.exec_query(f"select * from users where username='{uname}' and password='{passwd}'", "select")
         
         if len(q) == 1:
@@ -144,8 +147,9 @@ class Controller(Client):
                 self.closeWindow(arg[0])
                 self.AdminDashboard()
             elif level=="kasir":
+                nik = self.exec_query(f"select nik from users where username='{uname}' and password='{passwd}'", "select")
                 self.closeWindow(arg[0])
-                self.KasirDashboard()
+                self.KasirDashboard(nik[0][0])
     
 
     # def checkRoller(self):
@@ -383,21 +387,42 @@ class Controller(Client):
 
             elif int(q_karcis_count[0][0]) == 0:
                 """ execute when offline ticket """
-
+                print("====> masuk sini")
                 self.time_now = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
                 self.time_now = datetime.strptime(self.time_now, '%Y-%m-%d %H:%M:%S')
 
                 if vehicle is None:
-                    self.components["jns_kendaraan"].setFocus()
-                    self.components["jns_kendaraan"].showPopup()
+                    # self.components["jns_kendaraan"].setFocus()
+                    # self.components["jns_kendaraan"].showPopup()
+                    
+                    self.components["nopol_transaksi"].setText("BL ")
+                    self.components["barcode_transaksi"].setText("")
+                    self.components["nopol_transaksi"].setFocus()
 
+                    print("BUKA GATE")
+                    
+                    ser = serial.Serial('/dev/cu.usbserial-1420', baudrate=9600)
+                    try:
+                        ser.write(b'0')
+                        print("Trigger GERBANG")
+                        time.sleep(2)
+
+                    except Exception as e:
+                        print(str(e))
+
+                    finally:
+                        ser.close()
+
+                    return 1
+                
                 # check vehicle type
                 elif vehicle is not None:
-                    self.components["ket_status"].setText("BELUM LUNAS (OFFLINE)")
 
                     # cek apakah karcis offline ?
                     first_three = barcode[:3]
                     if first_three == "000":
+                        self.components["ket_status"].setText("BELUM LUNAS (OFFLINE)")
+                        
                         # remove 000
                         barcode = barcode.replace('000', "")
                         print("==> offline barcode ", barcode)
@@ -467,10 +492,8 @@ class Controller(Client):
                         elif parking_seconds < tolerance:
                             self.components["ket_status"].setText("FREE")
                             self.components["tarif_transaksi"].setText("0")
-                        
-            self.components["tarif_transaksi"].setFocus()
-            
 
+            
         except Exception as e:
             # clear text box if false input barcode
             self.clearKasirForm()
@@ -561,6 +584,7 @@ class Controller(Client):
 
     def add_user(self):
         uname = self.components["add_uname"].text()    
+        nik = self.components["add_nik"].text()    
         passwd = self.components["add_pass"].text()    
         retype_passwd = self.components["retype_pass"].text()    
         user_level = self.components["input_user_level"].currentText().lower()    
@@ -568,19 +592,20 @@ class Controller(Client):
         if passwd == retype_passwd:
 
             # save data
-            query = f"insert into users (username, user_level, password) values ('{uname}', '{user_level}', '{passwd}');"
+            query = f"insert into users (username, user_level, password, nik) values ('{uname}', '{user_level}', '{passwd}', '{nik}');"
             res = self.exec_query(query)
             
             if res:
                 
                 # reset table value
-                query = self.exec_query("SELECT id, username, user_level FROM users", "SELECT")
-                cols = 3
+                query = self.exec_query("SELECT id, username, user_level, nik FROM users", "SELECT")
+                cols = 4
 
                 self.fillTable(self.user_table, cols, query, len(query))
 
                  # clear all input
                 self.components["add_uname"].setText("")
+                self.components["add_nik"].setText("")
                 self.components["add_pass"].setText("")
                 self.components["retype_pass"].setText("")
 
@@ -602,18 +627,21 @@ class Controller(Client):
         alamat = self.components["add_alamat"].text()    
         jm_masuk = self.components["add_jam_masuk"].text()    
         jm_keluar = self.components["add_jam_keluar"].text()    
+        jm_masuk = jm_masuk.replace(" ", "")
+        jm_keluar = jm_keluar.replace(" ", "")
         no_pos = self.components["add_nmr_pos"].text()    
+        jns_pos = self.components["add_jns_pos"].currentText()    
         no_shift = self.components["add_nmr_shift"].currentText()    
         
         # save data
-        query = f"insert into kasir (nik, nama, hp, alamat, jm_masuk, jm_keluar, no_pos, shift) values ('{nik}', '{nama}', '{hp}', '{alamat}', '{jm_masuk}', '{jm_keluar}', '{no_pos}', '{no_shift}');"
+        query = f"insert into kasir (nik, nama, hp, alamat, jm_masuk, jm_keluar, no_pos, shift, jns_pos) values ('{nik}', '{nama}', '{hp}', '{alamat}', '{jm_masuk}', '{jm_keluar}', '{no_pos}', '{no_shift}', '{jns_pos}');"
         res = self.exec_query(query)
         
         if res:
 
             # reset table value
-            query = self.exec_query("SELECT id, nik, nama, hp, alamat, jm_masuk, jm_keluar, no_pos, shift FROM kasir", "SELECT")
-            cols = 9
+            query = self.exec_query("SELECT id, nik, nama, hp, alamat, jm_masuk, jm_keluar, no_pos, jns_pos, shift FROM kasir", "SELECT")
+            cols = 10
 
             self.fillTable(self.kasir_table, cols, query, len(query))
 
@@ -683,14 +711,14 @@ class Controller(Client):
         print("==========*******==========")
 
         if statOnline:
-            # print("==> UPDATE KARCIS")
-            self.exec_query(f"update karcis set status_parkir=true, jenis_kendaraan='{kendaraan}', tarif='{tarif}', date_keluar='{dt_keluar}', lama_parkir='{self.diff_formatted}', jns_transaksi='{jns_trans}' where barcode='{barcode}'")
+            # pada keadaan online nomor tgl_masuk, gate & jenis kendaraan sudah terisi dahulu, saat dikirim oleh raspi
+            kd_shift = Controller.kd_shift
+            self.exec_query(f"update karcis set status_parkir=true, jenis_kendaraan='{kendaraan}', tarif='{tarif}', date_keluar='{dt_keluar}', lama_parkir='{self.diff_formatted}', jns_transaksi='{jns_trans}', kd_shift='{kd_shift}' where barcode='{barcode}'")
         else:
             date_masuk = str(self.date_masuk_offline)
             date_keluar = str(self.date_keluar_offline)
             lama_parkir = str(self.time_diff_offline)
             kd_shift = Controller.kd_shift
-            print(f"insert into karcis (barcode, datetime, status_parkir, jenis_kendaraan, date_keluar, lama_parkir, tarif, nopol, kd_shift, jns_transaksi, images_path_keluar) values ('{barcode}', '{date_masuk}', true, '{kendaraan}', '{date_keluar}', '{lama_parkir}', '{tarif}', '{nopol}', '{kd_shift}', '{jns_trans}', '[IMG_PATH_KELUAR]')")
             self.exec_query(f"insert into karcis (barcode, datetime, status_parkir, jenis_kendaraan, date_keluar, lama_parkir, tarif, nopol, kd_shift, jns_transaksi, images_path_keluar) values ('{barcode}', '{date_masuk}', true,'{kendaraan}', '{date_keluar}', '{lama_parkir}', '{tarif}', '{nopol}', '{kd_shift}', '{jns_trans}', '[IMG_PATH_KELUAR]')")
 
         # clear all text box and disable input
@@ -845,6 +873,7 @@ class Controller(Client):
         # get data from edit form
         id = str(self.hidden_id)
         uname = self.components["add_uname"].text()
+        nik = self.components["add_nik"].text()
         level = self.components["input_user_level"].currentText()
         passwd = self.components["add_pass"].text()
         retype_passwd = self.components["retype_pass"].text()
@@ -852,14 +881,14 @@ class Controller(Client):
         if passwd == retype_passwd:
 
             # run update query
-            self.exec_query(f"update users set username='{uname}', user_level='{level}', password='{passwd}' where id="+id)
+            self.exec_query(f"update users set username='{uname}', user_level='{level}', password='{passwd}', nik='{nik}' where id="+id)
             
             # close window edit
             self.win.close()
 
             # reset table value
-            query = self.exec_query("SELECT id, username, user_level FROM users", "SELECT")
-            cols = 3
+            query = self.exec_query("SELECT id, username, user_level, nik FROM users", "SELECT")
+            cols = 4
 
             self.fillTable(self.user_table, cols, query)
             
@@ -881,19 +910,22 @@ class Controller(Client):
         alamat = self.components["add_alamat"].text()
         jm_masuk = self.components["add_jam_masuk"].text()
         jm_keluar = self.components["add_jam_keluar"].text()
-        no_pos = self.components["add_nmr_pos"].text()
+        jm_masuk = jm_masuk.replace(" ", "")
+        jm_keluar = jm_keluar.replace(" ", "")
+        no_pos = self.components["add_nmr_pos"].currentText()
+        jns_pos = self.components["add_jns_pos"].currentText()
         no_shift = self.components["add_nmr_shift"].currentText()
 
         # run update query
-        self.exec_query(f"update kasir set nik='{nik}', nama='{nama}', hp='{hp}', alamat='{alamat}', jm_masuk='{jm_masuk}', jm_keluar='{jm_keluar}', no_pos='{no_pos}', shift='{no_shift}'  where id="+id)
+        self.exec_query(f"update kasir set nik='{nik}', nama='{nama}', hp='{hp}', alamat='{alamat}', jm_masuk='{jm_masuk}', jm_keluar='{jm_keluar}', no_pos='{no_pos}', jns_pos='{jns_pos}', shift='{no_shift}'  where id="+id)
         
 
         # close window edit
         self.win.close()
 
         # reset table value
-        query = self.exec_query("SELECT id, nik, nama, hp, alamat, jm_masuk, jm_keluar, no_pos, shift FROM kasir", "SELECT")
-        cols = 9
+        query = self.exec_query("SELECT id, nik, nama, hp, alamat, jm_masuk, jm_keluar, no_pos, jns_pos, shift FROM kasir", "SELECT")
+        cols = 10
 
         self.fillTable(self.kasir_table, cols, query)
 
@@ -2149,7 +2181,7 @@ class Controller(Client):
                         # reset table value
                         query = self.exec_query("SELECT id, nik, nama, hp, alamat, jm_masuk, jm_keluar, no_pos FROM kasir", "SELECT")
                         rows_count = len(query)
-                        cols = 8
+                        cols = 9
                         self.fillTable(self.kasir_table, cols, query, rows_count)
                         self.logger.info("Kasir delete success")
                     
@@ -2452,6 +2484,7 @@ class Controller(Client):
         jns_kendaraan = self.pilih_jns_kendaraan.currentText()
         stat_kendaraan = self.pilih_stat_kendaraan.currentText()
         jns_transaksi = self.pilih_jns_transaksi.currentText()
+        gate = self.pilih_gate.currentText()
         kd_shift = self.pilih_shift.currentText()
 
         # cari data, tanggal, menit, jam, jenis pembayaran, shift,  
@@ -2460,25 +2493,37 @@ class Controller(Client):
         # select datetime from karcis where cast(datetime as date) between '2023-02-05' and '2023-02-06';
         # select id,lama_parkir from karcis where lama_parkir between CAST('3600 seconds' AS interval) and CAST('10800 seconds' AS interval);
         # select id,lama_parkir from karcis where lama_parkir=CAST('3600 seconds' AS interval);
-        query = f"{query} "
+        # query = f"{query} "
+    
+        ######### range tanggal
+        query = f"{query} cast( datetime as date ) between '{parse_tgl1}' and '{parse_tgl2}'"
+
+        ######### stat kendaraan 
+        # if stat_kendaraan == "Masuk":
+        #     query = f"{query} cast( datetime as date ) between '{parse_tgl1}' and '{parse_tgl2}' and status_parkir=false"
+        # elif stat_kendaraan == "Keluar":
+        #     query = f"{query} cast( date_keluar as date ) between '{parse_tgl1}' and '{parse_tgl2}' and status_parkir=true"
+        # elif stat_kendaraan == "Semua":
+        #     query = f"{query} ( cast( datetime as date ) between '{parse_tgl1}' and '{parse_tgl2}' or cast( date_keluar as date ) between '{parse_tgl1}' and '{parse_tgl2}' )"
         
-        ######### stat kendaraan ===> menentukan column tgl mana yg akan di filter
         if stat_kendaraan == "Masuk":
-            query = f"{query} cast( datetime as date ) between '{parse_tgl1}' and '{parse_tgl2}'"
+            query = f"{query} AND status_parkir=false"
         elif stat_kendaraan == "Keluar":
-            query = f"{query} cast( date_keluar as date ) between '{parse_tgl1}' and '{parse_tgl2}'"
+            query = f"{query} AND status_parkir=true"
         elif stat_kendaraan == "Semua":
-            query = f"{query} ( cast( datetime as date ) between '{parse_tgl1}' and '{parse_tgl2}' or cast( date_keluar as date ) between '{parse_tgl1}' and '{parse_tgl2}' )"
+            query = f"{query} AND (status_parkir=false OR status_parkir=true)"
             
            
         ######## check menit/jam filter is active ?
+        sv1=""
+        sv2=""
         if self.r_menit:
-            sv1 = self.input_menit1.text()
-            sv2 = self.input_menit2.text()
+            sv1 = self.input_menit1.text() + "minutes"
+            sv2 = self.input_menit2.text() + "minutes"
             query = f"{query} and lama_parkir between CAST('{sv1}' AS interval) and CAST('{sv2}' AS interval)"
         elif self.r_jam:
-            sv1 = self.input_jam1.text()
-            sv2 = self.input_jam2.text()
+            sv1 = self.input_jam1.text() + "hours"
+            sv2 = self.input_jam2.text() + "hours"
             query = f"{query} and lama_parkir between CAST('{sv1}' AS interval) and CAST('{sv2}' AS interval)"
         
         
@@ -2493,6 +2538,10 @@ class Controller(Client):
             query = f"{query} and jns_transaksi='{ jns_transaksi.lower() }'"
 
         
+        ######### gate
+        if gate != "Semua":
+            query = f"{query} and gate='{gate}'"
+        
         ######### shift
         if kd_shift != "Semua":
             query = f"{query} and kd_shift='{kd_shift}'"
@@ -2504,11 +2553,23 @@ class Controller(Client):
 
 
         # exec query
+        self.search_params = {
+            'cari_data':cari_data, 
+            'start_date':parse_tgl1, 
+            'end_date':parse_tgl2, 
+            # 'start_time':sv1, 
+            # 'end_time':sv2, 
+            'start_time':"" if sv1=="0" else sv1, 
+            'end_time':"" if sv2=="0" else sv2, 
+            'jns_kendaraan':jns_kendaraan.lower(), 
+            'stat_kendaraan':stat_kendaraan.lower(), 
+            'jns_transaksi':jns_transaksi.lower(), 
+            'gate':gate.lower(), 
+            'kd_shift':kd_shift.lower()
+        }
+        # print("======> filter:", query)
         self.query_search = f"select id, barcode, nopol, jenis_kendaraan, gate, cast(datetime as date), cast(date_keluar as date), lama_parkir, status_parkir, tarif, jns_transaksi, kd_shift from karcis where {query} order by id"
-        # print("cek==>: ", query)
-
-        # print("==> query: ",query)
-
+        
         # extract result & fill laporan table
         self.karcis_rows = self.exec_query(f"select count(*) as count from karcis where {query}", "select") # query utk hitung jumlah semua data, berdasarkan filter2ny, tidak pakai limit karena mau tau jumlah semua data
         self.row_limit = 18 if self.karcis_rows[0][0] >= 18 else self.karcis_rows[0][0] # menentukan jumlah limit, berdasarakan total data yg ada
@@ -2516,11 +2577,12 @@ class Controller(Client):
         
         
         query_limit = f"{self.query_search} limit {self.row_limit} OFFSET {self.row_offset}" # baru masukkan limit kedalam querynya
-        
+        print("======> filter:", query_limit)
+
         res = self.exec_query( query_limit, "SELECT") # result yg ada limitnya
         res2 = self.exec_query( self.query_search, "SELECT") # result yg tidak ada limitnya, utk diolah pada proses yg lain, seperti cetak laporan
         rows_count = len(res)
-        cols = 11
+        cols = 12
 
         self.laporan_table.setRowCount( rows_count )
         self.laporan_table.setColumnCount( cols )
@@ -2554,11 +2616,10 @@ class Controller(Client):
         else:
             self.total_income_lbl.setText("TOTAL INCOME: Rp 0" )
 
-
-        return tgl1,tgl2,res2 
+        self.search_res = res2
+        # return tgl1,tgl2,res2 
 
     def printLaporan(self):
-
         # Margin
         self.m= 10
         
@@ -2568,11 +2629,8 @@ class Controller(Client):
         
         self.pdf.set_font('Arial', '', 8)
 
-        tgl1,tgl2,res = self.searchKarcis()
+        # tgl1,tgl2,res = self.searchKarcis()
 
-        # print("===>")
-        # print(type(res))
-        # print(res)
         
         ### jenis laporan
         if self.row_opsi_print.currentText() == "rekap/jam":
@@ -2582,16 +2640,36 @@ class Controller(Client):
             self.pw = 297 - 2*self.m
             self.pdf.add_page(orientation='L')
 
-            self.agregatJam( tgl1,tgl2 )
+            self.agregatJam( 
+                self.search_params['start_date'], 
+                self.search_params['end_date'],  
+                start_time=self.search_params['start_time'],  
+                end_time=self.search_params['end_time'],  
+                jns_kendaraan=self.search_params["jns_kendaraan"], 
+                stat_kendaraan=self.search_params["stat_kendaraan"], 
+                jns_transaksi=self.search_params["jns_transaksi"], 
+                gate=self.search_params["gate"], 
+                kd_shift=self.search_params["kd_shift"] 
+                )
         
         elif self.row_opsi_print.currentText() == "rekap/tgl":
             # Page landscape: Width of A4 is 210mm x 297mm 
             self.ph = 210
             self.pw = 297 - 2*self.m
             self.pdf.add_page(orientation='L')
-
-            self.agregatTgl( tgl1,tgl2 )
-        
+            
+            self.agregatTgl( 
+                self.search_params['start_date'], 
+                self.search_params['end_date'],  
+                start_time=self.search_params['start_time'],  
+                end_time=self.search_params['end_time'],  
+                jns_kendaraan=self.search_params["jns_kendaraan"], 
+                stat_kendaraan=self.search_params["stat_kendaraan"], 
+                jns_transaksi=self.search_params["jns_transaksi"], 
+                gate=self.search_params["gate"], 
+                kd_shift=self.search_params["kd_shift"] 
+                )
+            
         elif self.row_opsi_print.currentText() == "semua":
 
             # Page potrait: Width of A4 is 210mm x 297mm 
@@ -2599,23 +2677,111 @@ class Controller(Client):
             self.pw = 210 - 2*self.m
             self.pdf.add_page(orientation='P')
 
-            self.semuaData( tgl1,tgl2,res )
+            # self.semuaData( self.search_params['start_date'], self.search_params['end_date'], self.search_res )
+
+            self.semuaData( 
+                self.search_params['start_date'], 
+                self.search_params['end_date'],
+                self.search_res,  
+                cari_data=self.search_params['cari_data'],  
+                start_time=self.search_params['start_time'],  
+                end_time=self.search_params['end_time'],  
+                jns_kendaraan=self.search_params["jns_kendaraan"], 
+                stat_kendaraan=self.search_params["stat_kendaraan"], 
+                jns_transaksi=self.search_params["jns_transaksi"], 
+                gate=self.search_params["gate"], 
+                kd_shift=self.search_params["kd_shift"] 
+                )
 
         
+    def agregatJam_query(self, date1, date2, range_time1, range_time2, jns_kendaraan=(), stat_parkir="", gate="", kd_shift=""):
 
-    def agregatJam(self,tgl1,tgl2):
+        # q_template = (f"SELECT count(*) as jml, SUM(tarif) as total FROM karcis "
+        #     f"WHERE CAST(datetime as date) "
+        #     f"BETWEEN '{date1}' and '{date2}' "
+        #     f"AND cast(EXTRACT(epoch FROM lama_parkir) as integer) >= {range_time1} "
+        #     f"AND cast(EXTRACT(epoch FROM lama_parkir) as integer) < {range_time2} "
+        #     f"AND status_parkir={stat_parkir} "
+        #     f"{kd_shift} "
+        #     f"AND lost_ticket=false "
+        #     f"AND (jenis_kendaraan='{jns_kendaraan[0]}' or jenis_kendaraan='{jns_kendaraan[1]}') " 
+        #     )
+        
+        q_template = (f"SELECT count(*) as jml, SUM(tarif) as total FROM karcis "
+            f"WHERE CAST(datetime as date) "
+            f"BETWEEN '{date1}' and '{date2}' "
+            f"AND cast(EXTRACT(epoch FROM lama_parkir) as integer) >= {range_time1} "
+            f"AND cast(EXTRACT(epoch FROM lama_parkir) as integer) < {range_time2} "
+            f"AND status_parkir={stat_parkir} "
+            f"{gate} "
+            f"{kd_shift} "
+            f"AND lost_ticket=false "
+            f"AND (jenis_kendaraan='{jns_kendaraan[0]}' or jenis_kendaraan='{jns_kendaraan[1]}') " 
+            )
+        
+        return q_template    
+      
+    def agregatJam_more24_query(self, date1, date2, day_in_seconds, jns_kendaraan=(), stat_parkir="", gate="", kd_shift=""):
+
+        q_template = (f"SELECT count(*) as jml, SUM(tarif) as total FROM karcis "
+            f"WHERE CAST(datetime as date) "
+            f"BETWEEN '{date1}' and '{date2}' "
+            f"AND cast(EXTRACT(epoch FROM lama_parkir) as integer) > {day_in_seconds}"
+            f"AND status_parkir={stat_parkir} "
+            f"{gate} "
+            f"{kd_shift} "
+            f"AND lost_ticket=false "
+            f"AND (jenis_kendaraan='{jns_kendaraan[0]}' or jenis_kendaraan='{jns_kendaraan[1]}') " 
+            )
+        
+        return q_template
+          
+    def agregatJam_pass_query(self, date1, date2, tolerance, jns_kendaraan=(), stat_parkir="", gate="", kd_shift=""):
+
+        q_template = (f"SELECT count(*) as jml, SUM(tarif) as total FROM karcis "
+            f"WHERE CAST(datetime as date) "
+            f"BETWEEN '{date1}' and '{date2}' "
+            f"AND cast(EXTRACT(epoch FROM lama_parkir) as integer) <= {tolerance}"
+            f"AND status_parkir={stat_parkir} "
+            f"{gate} "
+            f"{kd_shift} "
+            f"AND lost_ticket=false "
+            f"AND (jenis_kendaraan='{jns_kendaraan[0]}' or jenis_kendaraan='{jns_kendaraan[1]}') " 
+            )
+        
+        return q_template      
+
+    def agregatJam(self,tgl1,tgl2, start_time="", end_time="", jns_kendaraan="", stat_kendaraan="", jns_transaksi="", gate="", kd_shift=""):
+        
+        ### active filter
+        lap_filter = "FILTER: "
+
+        if start_time!="0" and end_time!="0":
+            time1 = timedelta(int(start_time))
+            time2 = timedelta(int(end_time))
+
+            lap_filter = f"{lap_filter} range: {time1} - {time2} |"
+
+        if jns_kendaraan != "": lap_filter = f"{lap_filter} jns.kendaraan: {jns_kendaraan} |"
+        if stat_kendaraan != "": lap_filter = f"{lap_filter} stat.kendaraan: {stat_kendaraan} |"
+        if jns_transaksi != "": lap_filter = f"{lap_filter} jns.transaksi: {jns_transaksi} |"
+        if gate != "": lap_filter = f"{lap_filter} gate: {gate} |"
+        if kd_shift != "": lap_filter = f"{lap_filter} shift: {kd_shift} |"
+        ### end active filter
+
         self.ch = 5
-        day, month, year = tgl1.split("-")
+        year, month, day = tgl1.split("-")
         d1 = datetime( int(year), int(month), int(day) )
         parse_tgl1 = f"{day}/{month}/{year}"
         
-        day, month, year = tgl2.split("-")
+        year, month, day = tgl2.split("-")
         d2 = datetime( int(year), int(month), int(day) )
         parse_tgl2 = f"{day}/{month}/{year}"
 
         self.pdf.set_font('Arial', 'B', 10)
         self.pdf.cell(w=(self.pw/5)*5, h=self.ch, txt="REKAP PENDAPATAN PARKIR", border=0, ln=1, align='C')
-        self.pdf.cell(w=(self.pw/5)*5, h=self.ch, txt=f"periode: {parse_tgl1} sampai dengan {parse_tgl2}", border=0, ln=1)
+        self.pdf.cell(w=(self.pw/5)*5, h=self.ch, txt=f"PERIODE: {parse_tgl1} sampai dengan {parse_tgl2}", border=0, ln=1)
+        self.pdf.cell(w=(self.pw/5)*5, h=self.ch, txt=f"{lap_filter}", border=0, ln=1)
         
         ############################### header ###############################
         self.pdf.cell(w=(self.pw/5), h=self.ch*2, txt="Lama Parkir", border=1, align='C')
@@ -2655,11 +2821,28 @@ class Controller(Client):
         bottom_t_mobil = 0
         bottom_t_gt = 0
         
+        # filter range time lama_parkir
+        # time_filter = "" if start_time=="" else f"AND lama_parkir between CAST('{start_time}' AS interval) and CAST('{end_time}' AS interval)"
+
+        # status parkir cuma 2, jika masuk kondisi dalam DB adalah false, pilihan semua/keluar -> true
+        stat_parkir = "false" if stat_kendaraan=="masuk" else "true"
+
+        # filter jenis transaksi
+        # jns_trans_filter = "" if jns_transaksi=="" else f"AND (jns_transaksi='{jns_transaksi.lower()}' OR jns_transaksi='{jns_transaksi}')"
+        
+        # filter no gate
+        no_gate_filter = "" if gate=="semua" else f"AND gate='{gate}'"
+        
+        # kd_shift no gate
+        kd_shift_filter = "" if kd_shift=="semua" else f"AND kd_shift='{kd_shift}'"
+
         # toleransi dalam menit, jadi harus di konversi kedalam detik
         toleransi = self.exec_query(f"select toleransi from tarif where id=1","select")
         toleransi = int(toleransi[0][0]) * 60
 
         self.pdf.set_font('Arial', '', 10)
+
+        ##################### START 0-24 jam ####################
         for i in range(25):
             
             self.pdf.cell(w=(self.pw/5), h=self.ch, txt=f"{i} Jam", border=1)
@@ -2670,27 +2853,25 @@ class Controller(Client):
             
             # motor
             if i==0:
-                res = self.exec_query(f"""
-                        select count(*) as jml, SUM(tarif) as total from karcis 
-                        where CAST(date_keluar as date) 
-                        between '{d1}' and '{d2}' 
-                        and cast(EXTRACT(epoch FROM lama_parkir) as integer) >= {toleransi}
-                        and cast(EXTRACT(epoch FROM lama_parkir) as integer) < {i_after}
-                        and status_parkir=true
-                        and lost_ticket=false
-                        and (jenis_kendaraan='motor' or jenis_kendaraan='Motor') """, "select")
-
+                res = self.exec_query( 
+                        self.agregatJam_query(
+                            d1, d2, toleransi, i_after, 
+                            jns_kendaraan=("motor", "Motor"), 
+                            stat_parkir=stat_parkir, 
+                            gate=no_gate_filter, 
+                            kd_shift=kd_shift_filter), 
+                        "select")
+                
             else:
-                res = self.exec_query(f"""
-                        select count(*) as jml, SUM(tarif) as total from karcis 
-                        where CAST(date_keluar as date) 
-                        between '{d1}' and '{d2}' 
-                        and cast(EXTRACT(epoch FROM lama_parkir) as integer) >= {i_before}
-                        and cast(EXTRACT(epoch FROM lama_parkir) as integer) < {i_after}
-                        and status_parkir=true
-                        and lost_ticket=false
-                        and (jenis_kendaraan='motor' or jenis_kendaraan='Motor') """, "select")
-    
+                res = self.exec_query( 
+                        self.agregatJam_query(
+                            d1, d2, i_before, i_after, 
+                            jns_kendaraan=("motor", "Motor"), 
+                            stat_parkir=stat_parkir, 
+                            gate=no_gate_filter, 
+                            kd_shift=kd_shift_filter), 
+                        "select")
+                
             j_motor = 0 if res[0][0]==0 or res[0][0] is None else res[0][0]
             t_motor = 0 if res[0][1]==0 or res[0][1] is None else res[0][1]
             self.pdf.cell(w=(self.pw/5)/2, h=self.ch, txt="{:,}".format( j_motor ).replace(",", "."), border=1)
@@ -2700,27 +2881,29 @@ class Controller(Client):
 
             # mobil
             if i==0:
-                res = self.exec_query(f"""
-                        select count(*) as jml, SUM(tarif) as total from karcis 
-                        where CAST(date_keluar as date) 
-                        between '{d1}' and '{d2}' 
-                        and cast(EXTRACT(epoch FROM lama_parkir) as integer) >= {toleransi}
-                        and cast(EXTRACT(epoch FROM lama_parkir) as integer) < {i_after}
-                        and status_parkir=true
-                        and lost_ticket=false
-                        and (jenis_kendaraan='mobil' or jenis_kendaraan='Mobil') """, "select")
-
+                res = self.exec_query( 
+                        self.agregatJam_query(
+                            d1, d2, toleransi, i_after, 
+                            jns_kendaraan=("mobil", "Mobil"), 
+                            stat_parkir=stat_parkir, 
+                            gate=no_gate_filter, 
+                            kd_shift=kd_shift_filter), 
+                        "select")
+                
             else:
-                res = self.exec_query(f"""
-                        select count(*) as jml, SUM(tarif) as total from karcis 
-                        where CAST(date_keluar as date) 
-                        between '{d1}' and '{d2}' 
-                        and cast(EXTRACT(epoch FROM lama_parkir) as integer) >= {i_before}
-                        and cast(EXTRACT(epoch FROM lama_parkir) as integer) < {i_after}
-                        and status_parkir=true
-                        and lost_ticket=false
-                        and (jenis_kendaraan='mobil' or jenis_kendaraan='Mobil') """, "select")
-    
+                x = self.agregatJam_query(
+                            d1, d2, i_before, i_after, 
+                            jns_kendaraan=("mobil", "Mobil"), 
+                            stat_parkir=stat_parkir, 
+                            gate=no_gate_filter, 
+                            kd_shift=kd_shift_filter)
+                
+                # print("AGREGAT JAM MOBIL: " , x)
+
+                # res = self.exec_query( 
+                #         x, 
+                #         "select")
+                
             j_mobil = 0 if res[0][0]==0 or res[0][0] is None else res[0][0]
             t_mobil = 0 if res[0][1]==0 or res[0][1] is None else res[0][1]
             self.pdf.cell(w=(self.pw/5)/2, h=self.ch, txt="{:,}".format( j_mobil ).replace(",", "."), border=1)
@@ -2741,22 +2924,22 @@ class Controller(Client):
             self.pdf.cell(w=(self.pw/5)/2, h=self.ch, txt="{:,}".format( gth_tot ).replace(",", "."), border=1)
 
             self.pdf.ln()
+        ##################### END 0-24 jam ####################
 
 
-
-        #### > 24 jam
+        ##################### START > 24 jam ####################
         day1_in_seconds = 24 * 3600  
         self.pdf.cell(w=(self.pw/5), h=self.ch, txt="> 24 Jam", border=1,)
         
         # motor
-        res = self.exec_query(f"""
-                        select count(*) as jml, SUM(tarif) as total from karcis 
-                        where CAST(date_keluar as date) 
-                        between '{d1}' and '{d2}' 
-                        and cast(EXTRACT(epoch FROM lama_parkir) as integer) > {day1_in_seconds}
-                        and status_parkir=true
-                        and lost_ticket=false
-                        and (jenis_kendaraan='motor' or jenis_kendaraan='Motor') """, "select")
+        res = self.exec_query( 
+                        self.agregatJam_more24_query(
+                            d1, d2, day1_in_seconds, 
+                            jns_kendaraan=("motor", "Motor"), 
+                            stat_parkir=stat_parkir, 
+                            gate=no_gate_filter, 
+                            kd_shift=kd_shift_filter), 
+                        "select")
         
         j_motor = 0 if res[0][0]==0 or res[0][0] is None else res[0][0]
         t_motor = 0 if res[0][1]==0 or res[0][1] is None else res[0][1]
@@ -2767,14 +2950,14 @@ class Controller(Client):
         
         
         # mobil
-        res = self.exec_query(f"""
-                        select count(*) as jml, SUM(tarif) as total from karcis 
-                        where CAST(date_keluar as date) 
-                        between '{d1}' and '{d2}' 
-                        and cast(EXTRACT(epoch FROM lama_parkir) as integer) > {day1_in_seconds}
-                        and status_parkir=true
-                        and lost_ticket=false
-                        and (jenis_kendaraan='mobil' or jenis_kendaraan='Mobil') """, "select")
+        res = self.exec_query( 
+                        self.agregatJam_more24_query(
+                            d1, d2, day1_in_seconds, 
+                            jns_kendaraan=("mobil", "Mobil"), 
+                            stat_parkir=stat_parkir, 
+                            gate=no_gate_filter, 
+                            kd_shift=kd_shift_filter), 
+                        "select")
         
         j_mobil = 0 if res[0][0]==0 or res[0][0] is None else res[0][0]
         t_mobil = 0 if res[0][1]==0 or res[0][1] is None else res[0][1]
@@ -2796,19 +2979,22 @@ class Controller(Client):
         self.pdf.cell(w=(self.pw/5)/2, h=self.ch, txt="{:,}".format( gth_tot ).replace(",", "."), border=1)
         
         self.pdf.ln()
-        
-        #### pass
+
+        ##################### END > 24 jam ####################
+
+
+        ##################### START PASS ####################
         self.pdf.cell(w=(self.pw/5), h=self.ch, txt="Pass", border=1,)
         
         # motor
-        res = self.exec_query(f"""
-                        select count(*) as jml, SUM(tarif) as total from karcis 
-                        where CAST(date_keluar as date) 
-                        between '{d1}' and '{d2}' 
-                        and cast(EXTRACT(epoch FROM lama_parkir) as integer) <= {toleransi}
-                        and status_parkir=true
-                        and lost_ticket=false
-                        and (jenis_kendaraan='motor' or jenis_kendaraan='Motor') """, "select")
+        res = self.exec_query( 
+                        self.agregatJam_pass_query(
+                            d1, d2, toleransi, 
+                            jns_kendaraan=("motor", "Motor"), 
+                            stat_parkir=stat_parkir, 
+                            gate=no_gate_filter, 
+                            kd_shift=kd_shift_filter), 
+                        "select")
         
         j_motor = 0 if res[0][0]==0 or res[0][0] is None else res[0][0]
         t_motor = 0 if res[0][1]==0 or res[0][1] is None else res[0][1]
@@ -2819,14 +3005,14 @@ class Controller(Client):
         
         
         # mobil
-        res = self.exec_query(f"""
-                        select count(*) as jml, SUM(tarif) as total from karcis 
-                        where CAST(date_keluar as date) 
-                        between '{d1}' and '{d2}' 
-                        and cast(EXTRACT(epoch FROM lama_parkir) as integer) <= {toleransi}
-                        and status_parkir=true
-                        and lost_ticket=false
-                        and (jenis_kendaraan='mobil' or jenis_kendaraan='Mobil') """, "select")
+        res = self.exec_query( 
+                        self.agregatJam_pass_query(
+                            d1, d2, toleransi, 
+                            jns_kendaraan=("mobil", "Mobil"), 
+                            stat_parkir=stat_parkir, 
+                            gate=no_gate_filter, 
+                            kd_shift=kd_shift_filter), 
+                        "select")
         
         j_mobil = 0 if res[0][0]==0 or res[0][0] is None else res[0][0]
         t_mobil = 0 if res[0][1]==0 or res[0][1] is None else res[0][1]
@@ -2876,26 +3062,43 @@ class Controller(Client):
         
         ################# end table content ######################
 
-        lap_name = f"laporan_{tgl1}_{tgl2}.pdf"
+        lap_name = f"laporan_perjam_dari_{tgl1}_{tgl2}.pdf"
         self.pdf.output(f'./{lap_name}', 'F')
 
         path = os.path.abspath(lap_name)
 
         webbrowser.open_new("file://"+path)
 
-    def agregatTgl(self,tgl1,tgl2):
-        
-        day, month, year = tgl1.split("-")
+    
+    def agregatTgl_tbl_header(self, tgl1, tgl2, start_time="", end_time="", jns_kendaraan="", stat_kendaraan="", jns_transaksi="", gate="", kd_shift=""):
+        ### active filter
+        lap_filter = "FILTER: "
+
+        if start_time!="0" and end_time!="0" and start_time!="" and end_time!="":
+            time1 = timedelta(int(start_time))
+            time2 = timedelta(int(end_time))
+
+            lap_filter = f"{lap_filter} range: {time1} - {time2} |"
+
+        if jns_kendaraan != "": lap_filter = f"{lap_filter} jns.kendaraan: {jns_kendaraan} |"
+        if stat_kendaraan != "": lap_filter = f"{lap_filter} stat.kendaraan: {stat_kendaraan} |"
+        if jns_transaksi != "": lap_filter = f"{lap_filter} jns.transaksi: {jns_transaksi} |"
+        if gate != "": lap_filter = f"{lap_filter} gate: {gate} |"
+        if kd_shift != "": lap_filter = f"{lap_filter} shift: {kd_shift} |"
+        ### end active filter
+
+        year, month, day = tgl1.split("-")
         d1 = datetime( int(year), int(month), int(day) )
         parse_tgl1 = f"{day}/{month}/{year}"
         
-        day, month, year = tgl2.split("-")
+        year, month, day = tgl2.split("-")
         d2 = datetime( int(year), int(month), int(day) )
         parse_tgl2 = f"{day}/{month}/{year}"
 
         self.pdf.set_font('Arial', 'B', 8)
         self.pdf.cell(w=(self.pw/5)*5, h=self.ch, txt="REKAP PENDAPATAN PARKIR", border=0, ln=1, align='C')
-        self.pdf.cell(w=(self.pw/5)*5, h=self.ch, txt=f"periode: {parse_tgl1} sampai dengan {parse_tgl2}", border=0, ln=1)
+        self.pdf.cell(w=(self.pw/5)*5, h=self.ch, txt=f"PERIODE: {parse_tgl1} sampai dengan {parse_tgl2}", border=0, ln=1)
+        self.pdf.cell(w=(self.pw/5)*5, h=self.ch, txt=f"{lap_filter}", border=0, ln=1)
         
         ############################### header ###############################
         self.pdf.cell(w=(self.pw/5), h=self.ch*2, txt="Tanggal", border=1, align='C')
@@ -2924,66 +3127,10 @@ class Controller(Client):
         self.pdf.cell(w=(self.pw/5)/2, h=self.ch, txt="jml", border=1)
         self.pdf.cell(w=(self.pw/5)/2, h=self.ch, txt="total", border=1, ln=1)
 
+        return d1,d2
         ############################ end header ###########################
 
-        ############################ table content ###########################
-        
-
-        ###### check apakah jumlah data pada list sama dengan selisih tgl1 dan tgl 2
-        ###### jika sama, artinya range tgl tersebut ada datanya semua
-        delta = d2-d1
-        # start_date = datetime.strptime(start_date_str, "%Y-%m-%d")
-
-        bottom_j_motor = 0
-        bottom_j_mobil = 0
-        bottom_j_gt = 0
-        bottom_t_motor = 0
-        bottom_t_mobil = 0
-        bottom_t_gt = 0
-        
-        self.pdf.set_font('Arial', '', 8)
-        for i in range(delta.days+1):
-            current_date = d1 + timedelta(days=i) 
-            tgl = current_date.strftime("%d/%m/%y")
-            tgl2 = current_date.strftime("%Y-%m-%d")
-
-
-
-            self.pdf.cell(w=(self.pw/5), h=self.ch, txt=tgl, border=1)
-
-            # motor
-            res = self.exec_query(f"select count(*) as jml, SUM(tarif) as total from karcis where cast(date_keluar as date)='{tgl2}' and (jenis_kendaraan='motor' or jenis_kendaraan='Motor') and lost_ticket=false", "SELECT")
-            j_motor = 0 if res[0][0]==0 or res[0][0] is None else res[0][0]
-            t_motor = 0 if res[0][1]==0 or res[0][1] is None else res[0][1]
-            self.pdf.cell(w=(self.pw/5)/2, h=self.ch, txt="{:,}".format( j_motor ).replace(",", "."), border=1)
-            self.pdf.cell(w=(self.pw/5)/2, h=self.ch, txt="{:,}".format( t_motor ).replace(",", "."), border=1)
-            bottom_j_motor += j_motor
-            bottom_t_motor += t_motor
-            
-            # mobil
-            res = self.exec_query(f"select count(*) as jml, SUM(tarif) as total from karcis where cast(date_keluar as date)='{tgl2}' and (jenis_kendaraan='mobil' or jenis_kendaraan='Mobil') and lost_ticket=false", "SELECT")
-            j_mobil = 0 if res[0][0]==0 or res[0][0] is None else res[0][0]
-            t_mobil = 0 if res[0][1]==0 or res[0][1] is None else res[0][1]
-            bottom_j_mobil += j_mobil
-            bottom_t_mobil += t_mobil
-            self.pdf.cell(w=(self.pw/5)/2, h=self.ch, txt="{:,}".format( j_mobil ).replace(",", "."), border=1)
-            self.pdf.cell(w=(self.pw/5)/2, h=self.ch, txt="{:,}".format( t_mobil ).replace(",", "."), border=1)
-            
-            # lainnya
-            self.pdf.cell(w=(self.pw/5)/2, h=self.ch, txt="...", border=1)
-            self.pdf.cell(w=(self.pw/5)/2, h=self.ch, txt="...", border=1)
-
-            # grand total
-            gth_jum = int(j_motor) + int(j_mobil) 
-            gth_tot = int(t_motor) + int(t_mobil) 
-            bottom_j_gt += gth_jum
-            bottom_t_gt += gth_tot
-            self.pdf.cell(w=(self.pw/5)/2, h=self.ch, txt="{:,}".format( gth_jum ).replace(",", "."), border=1)
-            self.pdf.cell(w=(self.pw/5)/2, h=self.ch, txt="{:,}".format( gth_tot ).replace(",", "."), border=1)
-
-            self.pdf.ln()
-        
-
+    def agregatTgl_tbl_footer(self, bottom_j_motor, bottom_t_motor, bottom_j_mobil, bottom_t_mobil, bottom_j_gt, bottom_t_gt):
         # bottom row-cell
         self.pdf.set_font('Arial', 'B', 8)
         self.pdf.cell(w=(self.pw/5), h=self.ch, txt="TOTAL", border=1, align='C')
@@ -3006,17 +3153,356 @@ class Controller(Client):
         
         self.pdf.ln()
 
-        ################# end table content ######################
-
-        lap_name = f"laporan_perjam_{tgl1}_{tgl2}.pdf"
-        self.pdf.output(f'./{lap_name}', 'F')
-
-        path = os.path.abspath(lap_name)
-
-        webbrowser.open_new("file://"+path)
-
-    def semuaData(self,tgl1,tgl2,res):
+    def agregatTgl_sub_motor(self, delta, d1, start_time="", end_time="", stat_kendaraan="",  jns_transaksi="", gate="", kd_shift=""):
+        bottom_j_motor = 0
+        bottom_j_mobil = 0
+        bottom_j_gt = 0
+        bottom_t_motor = 0
+        bottom_t_mobil = 0
+        bottom_t_gt = 0
         
+        # filter range time lama_parkir
+        time_filter = "" if start_time=="" else f"AND lama_parkir between CAST('{start_time}' AS interval) and CAST('{end_time}' AS interval)"
+
+        # status parkir cuma 2, jika masuk kondisi dalam DB adalah false, keluar -> true
+        stat_parkir = "false" if stat_kendaraan=="masuk" else "true"
+
+        # filter jenis transaksi
+        jns_trans_filter = "" if jns_transaksi=="" else f"AND (jns_transaksi='{jns_transaksi.lower()}' OR jns_transaksi='{jns_transaksi}')"
+        
+        # filter no gate
+        no_gate_filter = "" if gate=="" else f"AND gate='{gate}')"
+        
+        # kd_shift no gate
+        kd_shift_filter = "" if kd_shift=="" else f"AND gate='{kd_shift}')"
+        
+        # jumlah days utk looping disini
+        for i in range(delta.days+1):
+            current_date = d1 + timedelta(days=i) 
+            tgl = current_date.strftime("%d/%m/%y") # date format used for pdf
+            tgl2 = current_date.strftime("%Y-%m-%d") #date format used for query
+
+            self.pdf.cell(w=(self.pw/5), h=self.ch, txt=tgl, border=1)
+
+            # motor
+            res = self.exec_query(f"select count(*) as jml, SUM(tarif) as total from karcis " 
+                                f"WHERE cast(datetime as date)='{tgl2}' "
+                                f"AND status_parkir='{stat_parkir}' "
+                                f"{jns_trans_filter} "
+                                f"{no_gate_filter} "
+                                f"{kd_shift_filter} "
+                                f"AND (jenis_kendaraan='motor' or jenis_kendaraan='Motor') "
+                                f"AND lost_ticket=false "
+                                f"{time_filter} ", "SELECT")
+            
+            j_motor = 0 if res[0][0]==0 or res[0][0] is None else res[0][0] #jumlah motor total 
+            t_motor = 0 if res[0][1]==0 or res[0][1] is None else res[0][1] #total akumulasi tarif berdasarkan jum motor diatas
+            self.pdf.cell(w=(self.pw/5)/2, h=self.ch, txt="{:,}".format( j_motor ).replace(",", "."), border=1)
+            self.pdf.cell(w=(self.pw/5)/2, h=self.ch, txt="{:,}".format( t_motor ).replace(",", "."), border=1)
+            bottom_j_motor += j_motor
+            bottom_t_motor += t_motor
+            
+            # mobil
+            self.pdf.cell(w=(self.pw/5)/2, h=self.ch, txt="...", border=1)
+            self.pdf.cell(w=(self.pw/5)/2, h=self.ch, txt="...", border=1)
+            
+            # lainnya
+            self.pdf.cell(w=(self.pw/5)/2, h=self.ch, txt="...", border=1)
+            self.pdf.cell(w=(self.pw/5)/2, h=self.ch, txt="...", border=1)
+
+            # grand total
+            gth_jum = int(j_motor) 
+            gth_tot = int(t_motor)
+            bottom_j_gt += gth_jum
+            bottom_t_gt += gth_tot
+            self.pdf.cell(w=(self.pw/5)/2, h=self.ch, txt="{:,}".format( gth_jum ).replace(",", "."), border=1)
+            self.pdf.cell(w=(self.pw/5)/2, h=self.ch, txt="{:,}".format( gth_tot ).replace(",", "."), border=1)
+
+            self.pdf.ln()
+
+        return bottom_j_motor, bottom_t_motor, bottom_j_mobil, bottom_t_mobil, bottom_j_gt, bottom_t_gt
+
+    def agregatTgl_sub_mobil(self, delta, d1, start_time="", end_time="", stat_kendaraan="",  jns_transaksi="", gate="", kd_shift=""):
+        bottom_j_motor = 0
+        bottom_j_mobil = 0
+        bottom_j_gt = 0
+        bottom_t_motor = 0
+        bottom_t_mobil = 0
+        bottom_t_gt = 0
+        
+        # filter range time lama_parkir
+        time_filter = "" if start_time=="" else f"AND lama_parkir between CAST('{start_time}' AS interval) and CAST('{end_time}' AS interval)"
+        
+        # status parkir cuma 2, jika masuk kondisi dalam DB adalah false, keluar -> true
+        stat_parkir = "false" if stat_kendaraan=="masuk" else "true"
+
+        # filter jenis transaksi
+        jns_trans_filter = "" if jns_transaksi=="" else f"AND (jns_transaksi='{jns_transaksi.lower()}' OR jns_transaksi='{jns_transaksi}')"
+        
+        # filter no gate
+        no_gate_filter = "" if gate=="" else f"AND gate='{gate}')"
+        
+        # kd_shift no gate
+        kd_shift_filter = "" if kd_shift=="" else f"AND gate='{kd_shift}')"
+
+        # jumlah days utk looping disini
+        for i in range(delta.days+1):
+            current_date = d1 + timedelta(days=i) 
+            tgl = current_date.strftime("%d/%m/%y") # date format used for pdf
+            tgl2 = current_date.strftime("%Y-%m-%d") #date format used for query
+
+            self.pdf.cell(w=(self.pw/5), h=self.ch, txt=tgl, border=1)
+
+            # motor
+            self.pdf.cell(w=(self.pw/5)/2, h=self.ch, txt="...", border=1)
+            self.pdf.cell(w=(self.pw/5)/2, h=self.ch, txt="...", border=1)
+            
+            # mobil
+            res = self.exec_query(f"SELECT count(*) as jml, SUM(tarif) as total from karcis "
+                                f"WHERE cast(datetime as date)='{tgl2}' "
+                                f"AND status_parkir='{stat_parkir}' "
+                                f"{jns_trans_filter} "
+                                f"{no_gate_filter} "
+                                f"{kd_shift_filter} " 
+                                f"AND (jenis_kendaraan='mobil' or jenis_kendaraan='Mobil') " 
+                                f"AND lost_ticket=false "
+                                f"{time_filter} ", "SELECT")
+            
+            j_mobil = 0 if res[0][0]==0 or res[0][0] is None else res[0][0] #jumlah mobil total 
+            t_mobil = 0 if res[0][1]==0 or res[0][1] is None else res[0][1] #total akumulasi tarif berdasarkan jum mobil diatas
+            bottom_j_mobil += j_mobil
+            bottom_t_mobil += t_mobil
+            self.pdf.cell(w=(self.pw/5)/2, h=self.ch, txt="{:,}".format( j_mobil ).replace(",", "."), border=1)
+            self.pdf.cell(w=(self.pw/5)/2, h=self.ch, txt="{:,}".format( t_mobil ).replace(",", "."), border=1)
+            
+            # lainnya
+            self.pdf.cell(w=(self.pw/5)/2, h=self.ch, txt="...", border=1)
+            self.pdf.cell(w=(self.pw/5)/2, h=self.ch, txt="...", border=1)
+
+            # grand total
+            gth_jum = int(j_mobil) 
+            gth_tot = int(t_mobil) 
+            bottom_j_gt += gth_jum
+            bottom_t_gt += gth_tot
+            self.pdf.cell(w=(self.pw/5)/2, h=self.ch, txt="{:,}".format( gth_jum ).replace(",", "."), border=1)
+            self.pdf.cell(w=(self.pw/5)/2, h=self.ch, txt="{:,}".format( gth_tot ).replace(",", "."), border=1)
+
+            self.pdf.ln()
+
+        return bottom_j_motor, bottom_t_motor, bottom_j_mobil, bottom_t_mobil, bottom_j_gt, bottom_t_gt
+
+    def agregatTgl_sub_semua(self, delta, d1, start_time="", end_time="", stat_kendaraan="", jns_transaksi="", gate="", kd_shift=""):
+        
+        j_motor = 0
+        t_motor = 0
+        j_mobil = 0
+        t_mobil = 0
+
+        bottom_j_motor = 0
+        bottom_j_mobil = 0
+        bottom_j_gt = 0
+        bottom_t_motor = 0
+        bottom_t_mobil = 0
+        bottom_t_gt = 0
+
+        # filter range time lama_parkir
+        time_filter = "" if start_time=="" else f"AND lama_parkir between CAST('{start_time}' AS interval) and CAST('{end_time}' AS interval)"
+
+        # status parkir cuma 2, jika masuk kondisi dalam DB adalah false, keluar -> true
+        stat_parkir = "false" if stat_kendaraan=="masuk" else "true"
+
+        # filter jenis transaksi
+        jns_trans_filter = "" if jns_transaksi=="" else f"AND (jns_transaksi='{jns_transaksi.lower()}' OR jns_transaksi='{jns_transaksi}')"
+        
+        # filter no gate
+        no_gate_filter = "" if gate=="" else f"AND gate='{gate}'"
+        
+        # kd_shift no gate
+        kd_shift_filter = "" if kd_shift=="" else f"AND kd_shift='{kd_shift}'"
+        
+        # jumlah days utk looping disini
+
+        print("======AWAL tgl:", d1)
+        for i in range(delta.days+1):
+            current_date = d1 + timedelta(days=i) 
+            tgl = current_date.strftime("%d/%m/%y") # date format used for pdf
+            tgl2 = current_date.strftime("%Y-%m-%d") #date format used for query
+
+            print("======list tgl:", tgl2)
+
+            self.pdf.cell(w=(self.pw/5), h=self.ch, txt=tgl, border=1)
+
+            # motor
+            res = self.exec_query(f"select count(*) as jml, SUM(tarif) as total from karcis " 
+                                f"WHERE cast(datetime as date)='{tgl2}' "
+                                f"AND status_parkir={stat_parkir} "
+                                f"{jns_trans_filter} "
+                                f"{no_gate_filter} "
+                                f"{kd_shift_filter} "
+                                f"AND (jenis_kendaraan='motor' or jenis_kendaraan='Motor') "
+                                f"AND lost_ticket=false "
+                                f"{time_filter} ", "SELECT")
+            
+            j_motor = 0 if res[0][0]==0 or res[0][0] is None else res[0][0] #jumlah motor total 
+            t_motor = 0 if res[0][1]==0 or res[0][1] is None else res[0][1] #total akumulasi tarif berdasarkan jum motor diatas
+            self.pdf.cell(w=(self.pw/5)/2, h=self.ch, txt="{:,}".format( j_motor ).replace(",", "."), border=1)
+            self.pdf.cell(w=(self.pw/5)/2, h=self.ch, txt="{:,}".format( t_motor ).replace(",", "."), border=1)
+            bottom_j_motor += j_motor
+            bottom_t_motor += t_motor
+            
+            # mobil
+            x = f"SELECT count(*) as jml, SUM(tarif) as total from karcis WHERE cast(datetime as date)='{tgl2}' AND status_parkir={stat_parkir} {jns_trans_filter} {no_gate_filter} {kd_shift_filter} AND (jenis_kendaraan='mobil' or jenis_kendaraan='Mobil') AND lost_ticket=false {time_filter}"
+            print("FILTER LAPORAN==>", x)
+                
+            res = self.exec_query(f"SELECT count(*) as jml, SUM(tarif) as total from karcis "
+                                f"WHERE cast(datetime as date)='{tgl2}' "
+                                f"AND status_parkir={stat_parkir} "
+                                f"{jns_trans_filter} "
+                                f"{no_gate_filter} "
+                                f"{kd_shift_filter} " 
+                                f"AND (jenis_kendaraan='mobil' or jenis_kendaraan='Mobil') " 
+                                f"AND lost_ticket=false "
+                                f"{time_filter} ", "SELECT")
+            
+            j_mobil = 0 if res[0][0]==0 or res[0][0] is None else res[0][0] #jumlah mobil total 
+            t_mobil = 0 if res[0][1]==0 or res[0][1] is None else res[0][1] #total akumulasi tarif berdasarkan jum mobil diatas
+            bottom_j_mobil += j_mobil
+            bottom_t_mobil += t_mobil
+            self.pdf.cell(w=(self.pw/5)/2, h=self.ch, txt="{:,}".format( j_mobil ).replace(",", "."), border=1)
+            self.pdf.cell(w=(self.pw/5)/2, h=self.ch, txt="{:,}".format( t_mobil ).replace(",", "."), border=1)
+            
+            # lainnya
+            self.pdf.cell(w=(self.pw/5)/2, h=self.ch, txt="...", border=1)
+            self.pdf.cell(w=(self.pw/5)/2, h=self.ch, txt="...", border=1)
+
+            # grand total
+            gth_jum = int(j_motor) + int(j_mobil) 
+            gth_tot = int(t_motor) + int(t_mobil) 
+            bottom_j_gt += gth_jum
+            bottom_t_gt += gth_tot
+            self.pdf.cell(w=(self.pw/5)/2, h=self.ch, txt="{:,}".format( gth_jum ).replace(",", "."), border=1)
+            self.pdf.cell(w=(self.pw/5)/2, h=self.ch, txt="{:,}".format( gth_tot ).replace(",", "."), border=1)
+
+            self.pdf.ln()
+
+        return bottom_j_motor, bottom_t_motor, bottom_j_mobil, bottom_t_mobil, bottom_j_gt, bottom_t_gt
+        
+    def agregatTgl(self, tgl1, tgl2, start_time="", end_time="", jns_kendaraan="", stat_kendaraan="", jns_transaksi="", gate="", kd_shift=""):
+        ############################ table header ###########################
+        
+        st_time_seconds = start_time
+        ed_time_seconds = end_time
+        if "minutes" in st_time_seconds and "minutes" in ed_time_seconds:
+            # remove minutes
+            st_time_seconds = st_time_seconds.replace("minutes","")
+            st_time_seconds = st_time_seconds.replace(" ","")
+            st_time_seconds = st_time_seconds * 60 
+
+            ed_time_seconds = ed_time_seconds.replace("minutes","")
+            ed_time_seconds = ed_time_seconds.replace(" ","")
+            ed_time_seconds = ed_time_seconds * 60
+            
+        elif "hours" in st_time_seconds and "hours" in ed_time_seconds:
+            # remove hours
+            st_time_seconds = st_time_seconds.replace("hours","")
+            st_time_seconds = st_time_seconds.replace(" ","")
+            st_time_seconds = st_time_seconds * 3600 
+
+            ed_time_seconds = ed_time_seconds.replace("hours","")
+            ed_time_seconds = ed_time_seconds.replace(" ","")
+            ed_time_seconds = ed_time_seconds * 3600
+        # else:
+        #     st_time_seconds = "0"
+        #     ed_time_seconds = "0"
+        
+        d1,d2 = self.agregatTgl_tbl_header(tgl1, tgl2, st_time_seconds, ed_time_seconds, jns_kendaraan, stat_kendaraan, jns_transaksi, gate, kd_shift)
+
+
+        ############################ table content ###########################
+        
+        ###### check apakah jumlah data pada list sama dengan selisih tgl1 dan tgl 2
+        ###### jika sama, artinya range tgl tersebut ada datanya semua
+        delta = d2-d1
+        # start_date = datetime.strptime(start_date_str, "%Y-%m-%d")
+
+        bottom_j_motor = 0
+        bottom_j_mobil = 0
+        bottom_j_gt = 0
+        bottom_t_motor = 0
+        bottom_t_mobil = 0
+        bottom_t_gt = 0
+
+        # ada bug di object self.pdf, dia menyimpan nilai sebelumnya
+        # stat_kendaraan = ("keluar", "masuk") if stat_kendaraan == "semua" else (stat_kendaraan,)
+        stat_kendaraan = (stat_kendaraan,)
+        jt = "" if jns_transaksi == "semua" else jns_transaksi
+        gt = "" if gate == "semua" else gate
+        ks = "" if kd_shift == "semua" else kd_shift
+        self.pdf.set_font('Arial', '', 8)
+        
+        print("kirim data ke agregatTgl_sub_semua:", start_time)
+
+        for s in stat_kendaraan:
+
+            if jns_kendaraan == "semua":
+                # bottom_j_motor, bottom_t_motor, bottom_j_mobil, bottom_t_mobil, bottom_j_gt, bottom_t_gt
+                a, b, c, d, e, f = self.agregatTgl_sub_semua(delta, d1, start_time=start_time, end_time=end_time, stat_kendaraan=s, jns_transaksi=jt, gate=gt, kd_shift=ks)
+                bottom_j_motor = a
+                bottom_t_motor = b
+                bottom_j_mobil = c
+                bottom_t_mobil = d
+                bottom_j_gt = e
+                bottom_t_gt = f
+
+            elif jns_kendaraan == "motor":
+                a, b, c, d, e, f = self.agregatTgl_sub_motor(delta, d1, start_time=start_time, end_time=end_time, stat_kendaraan=s, jns_transaksi=jt, gate=gt, kd_shift=ks)
+                bottom_j_motor = a
+                bottom_t_motor = b
+                bottom_j_mobil = c
+                bottom_t_mobil = d
+                bottom_j_gt = e
+                bottom_t_gt = f
+
+            elif jns_kendaraan == "mobil":
+                a, b, c, d, e, f = self.agregatTgl_sub_mobil(delta, d1, start_time=start_time, end_time=end_time, stat_kendaraan=s, jns_transaksi=jt, gate=gt, kd_shift=ks)
+                bottom_j_motor = a
+                bottom_t_motor = b
+                bottom_j_mobil = c
+                bottom_t_mobil = d
+                bottom_j_gt = e
+                bottom_t_gt = f
+                    
+            self.agregatTgl_tbl_footer(bottom_j_motor, bottom_t_motor, bottom_j_mobil, bottom_t_mobil, bottom_j_gt, bottom_t_gt)
+
+            ################# end table content ######################
+
+            lap_name = f"lap_{tgl1}_{tgl2}_sts_kend_{s}.pdf"
+            self.pdf.output(f'./{lap_name}', 'F')
+
+            path = os.path.abspath(lap_name)
+
+            webbrowser.open_new("file://"+path)
+
+
+    def semuaData(self, tgl1, tgl2, res, cari_data="", start_time="", end_time="", jns_kendaraan="", stat_kendaraan="", jns_transaksi="", gate="", kd_shift=""):
+        
+        ### active filter
+        lap_filter = "FILTER: "
+
+        if cari_data != "": lap_filter = f"{lap_filter} keyword: {cari_data} |"
+        if start_time!="0" and end_time!="0":
+            time1 = timedelta(int(start_time))
+            time2 = timedelta(int(end_time))
+
+            lap_filter = f"{lap_filter} range: {time1} - {time2} |"
+
+        if jns_kendaraan != "": lap_filter = f"{lap_filter} jns.kendaraan: {jns_kendaraan} |"
+        if stat_kendaraan != "": lap_filter = f"{lap_filter} stat.kendaraan: {stat_kendaraan} |"
+        if jns_transaksi != "": lap_filter = f"{lap_filter} jns.transaksi: {jns_transaksi} |"
+        if gate != "": lap_filter = f"{lap_filter} gate: {gate} |"
+        if kd_shift != "": lap_filter = f"{lap_filter} shift: {kd_shift} |"
+        ### end active filter
+
         day, month, year = tgl1.split("-")
         parse_tgl1 = f"{day}/{month}/{year}"
         
@@ -3025,7 +3511,8 @@ class Controller(Client):
 
         self.pdf.set_font('Arial', 'B', 8)
         self.pdf.cell(w=(self.pw/7)*7, h=self.ch, txt="REKAP PARKIR HARIAN", border=0, ln=1, align='C')
-        self.pdf.cell(w=(self.pw/7)*7, h=self.ch, txt=f"periode: {parse_tgl1} sampai dengan {parse_tgl2}", border=0, align='C', ln=1)
+        self.pdf.cell(w=(self.pw/7)*7, h=self.ch, txt=f"PERIODE: {parse_tgl1} sampai dengan {parse_tgl2}", border=0, align='C', ln=1)
+        self.pdf.cell(w=(self.pw/7)*7, h=self.ch, txt=f"{lap_filter}", border=0, align='C', ln=1)
         
         ############################### header ###############################
         self.pdf.cell(w=(self.pw/7), h=self.ch, txt="Nopol", border=1, align='C')

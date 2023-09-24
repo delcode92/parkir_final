@@ -209,7 +209,7 @@ class Main(Util, View):
                                     ]
 
                 case "user":
-                    
+                    form_size=(400,600)
                     res = self.exec_query("select * from users where id="+id, "select")
 
                     components = [
@@ -223,6 +223,17 @@ class Main(Util, View):
                                             "name":"add_uname",
                                             "category":"lineEdit",
                                             "text":res[0][1],
+                                            "style":self.primary_input
+                                        },
+                                        {
+                                            "name":"lbl_add_nik",
+                                            "category":"label",
+                                            "text": "NIK",
+                                            "style":self.primary_lbl + margin_top
+                                        },
+                                        {
+                                            "name":"add_nik",
+                                            "category":"lineEdit",
                                             "style":self.primary_input
                                         },
                                         {
@@ -258,7 +269,7 @@ class Main(Util, View):
                                             "category":"comboBox",
                                             "items": ["Admin","Pegawai", "Kasir"],
                                             "selected_item": res[0][2],
-                                            "style":self.primary_combobox
+                                            "style":self.primary_combobox + "font-weight: 500; background:#fff; color:#000;" 
                                         },
                                         {
                                             "name":"btn_add_user",
@@ -274,6 +285,8 @@ class Main(Util, View):
                 case "kasir":
                     
                     res = self.exec_query("select * from kasir where id="+id, "select")
+                    no_pos = res[0][7]
+                    jns_pos = res[0][10]
                     shift = res[0][8]
                     components = [      {
                                             "name":"lbl_add_nik",
@@ -331,7 +344,7 @@ class Main(Util, View):
                                         },
                                         {
                                             "name":"add_jam_masuk",
-                                            "category":"lineEdit",
+                                            "category":"lineEditHours",
                                             "text":res[0][5],
                                             "style":self.primary_input
                                         },
@@ -343,7 +356,7 @@ class Main(Util, View):
                                         },
                                         {
                                             "name":"add_jam_keluar",
-                                            "category":"lineEdit",
+                                            "category":"lineEditHours",
                                             "text":res[0][6],
                                             "style":self.primary_input
                                         },
@@ -355,9 +368,21 @@ class Main(Util, View):
                                         },
                                         {
                                             "name":"add_nmr_pos",
-                                            "category":"lineEditInt",
-                                            "text":res[0][7],
-                                            "style":self.primary_input
+                                            "category":"comboBox",
+                                            "items":["1", "2", "3", "4", "5", "6"],
+                                            "style":self.primary_combobox + "font-weight: 600; background:#fff; color:#000;"
+                                        },
+                                        {
+                                            "name":"lbl_add_jns_pos",
+                                            "category":"label",
+                                            "text": "Jns Pos/Gate",
+                                            "style":self.primary_lbl + "margin-top:15px;"
+                                        },
+                                        {
+                                            "name":"add_jns_pos",
+                                            "category":"comboBox",
+                                            "items": ["motor","mobil"],
+                                            "style":self.primary_combobox + "font-weight: 600; background:#fff; color:#000;"
                                         },
                                         {
                                             "name":"lbl_add_shift",
@@ -369,7 +394,7 @@ class Main(Util, View):
                                             "name":"add_nmr_shift",
                                             "category":"comboBox",
                                             "items":["shift-1", "shift-2", "shift-3", "shift-4", "shift-5"],
-                                            "style":self.primary_combobox + "background:none; color:#000;"
+                                            "style":self.primary_combobox + "font-weight: 600; background:#fff; color:#000;"
                                         },
                                         {
                                             "name":"btn_add_kasir",
@@ -849,6 +874,8 @@ class Main(Util, View):
                 # print("==> tipe tarif: ", tipe_tarif)
             
             elif form_type.lower() == "kasir":
+                self.components['add_nmr_pos'].setCurrentText(no_pos)
+                self.components['add_jns_pos'].setCurrentText(jns_pos)
                 self.components['add_nmr_shift'].setCurrentText(shift)
                
             self.win.show()
@@ -1228,17 +1255,155 @@ class Main(Util, View):
         popup_window = PopupWindow(self.q_kendaraan)
         popup_window.exec_()
     
+    def Rekap(self):
+        # create simple form
+        import psycopg2, time
+        from escpos.printer import Usb
+
+        class PopupWindow(QDialog):
+            
+            def __init__(self):
+                super().__init__()
+                self.initConfig()
+                self.connect_to_postgresql()
+                
+                self.resize(400, 200)
+                self.setContentsMargins(15,15,15,15)
+
+                layout = QVBoxLayout()
+
+                lbl = QLabel("TGL PRINT")
+                self.date = QDateEdit( calendarPopup=True )
+                self.date.setDisplayFormat("dd/MM/yyyy")
+                btn = QPushButton("PRINT REKAP")
+
+                self.date.setDateTime( QDateTime.currentDateTime() )
+                lbl.setStyleSheet( View.primary_lbl + "}" )
+                btn.setStyleSheet( View.primary_button + "}" )
+
+                EventBinder(self.date, self.date_enter, None )
+
+                layout.addWidget(lbl)
+                layout.addWidget(self.date)
+                # layout.addWidget(btn)
+                layout.addStretch(1)
+
+                self.setLayout(layout)
+                self.setWindowModality(Qt.ApplicationModal)
+                self.setWindowTitle("Rekap SHIFT")
+            
+            def initConfig(self):
+                try:
+                    ini = self.getPath("app.ini")
+                    
+                    self.configur = ConfigParser()
+                    self.configur.read(ini)
+                except Exception as e:
+                    print(str(e))
+
+            def getPath(self,fileName):
+                path = os.path.dirname(os.path.realpath(__file__))
+                
+                return '/'.join([path, fileName])
+    
+            def connect_to_postgresql(self):
+                try:
+                    
+                    conn = psycopg2.connect(
+                        database=self.configur["db"]["db_name"], user=self.configur["db"]["username"], password=self.configur["db"]["password"], host=self.configur["db"]["host"], port= self.configur["db"]["port"]
+                    )
+                    conn.autocommit = True
+                    self.db_cursor = conn.cursor()
+
+                except Exception as e:
+                    print( str(e) )    
+
+            def exec_query(self, query, type=""):
+        
+                try:
+                    self.db_cursor.execute(query)
+                    print("\nsuccess execute query")
+
+                    if type.lower() == "":    
+                        return True
+
+                except Exception as e:
+                    print("\nexecute query fail")
+                    print( str(e) )
+                    
+                if type.lower() =="select":
+                    data = self.db_cursor.fetchall()
+                    return data
+                
+                elif type.lower() =="cols_res":
+                    cols = [desc[0] for desc in self.db_cursor.description]
+                    data = self.db_cursor.fetchall()
+                    return cols,data
+
+            def date_enter(self):
+                # get date 
+                dt_shift = self.date.text()
+                # dt_shift = dt_shift.replace("/", "-" )
+
+                day, month, year = dt_shift.split("/")
+                parse_tgl = f"{year}-{month}-{day}"
+
+                # print(f"SELECT count(*) from karcis where cast(datetime as date)='{parse_tgl}' AND status_parkir=true AND gate='{Main.no_pos}' AND kd_shift='{Main.kd_shift}'")
+
+                res_motor = self.exec_query(f"select count(*) as jml, SUM(tarif) as total from karcis where cast(datetime as date)='{parse_tgl}' AND (jenis_kendaraan='motor' or jenis_kendaraan='Motor') AND status_parkir=true AND gate='{Main.no_pos}' AND kd_shift='{Main.kd_shift}'", "select")
+                
+                res_mobil = self.exec_query(f"select count(*) as jml, SUM(tarif) as total from karcis where cast(datetime as date)='{parse_tgl}' AND (jenis_kendaraan='mobil' or jenis_kendaraan='Mobil') AND status_parkir=true AND gate='{Main.no_pos}' AND kd_shift='{Main.kd_shift}'", "select")
+
+                j_motor = "0" if (res_motor[0][0] == None or res_motor[0][0] == "") else res_motor[0][0]
+                tot_motor = "0" if (res_motor[0][1] == None or res_motor[0][1] == "") else res_motor[0][1]
+
+                j_mobil = "0" if (res_mobil[0][0] == None or res_mobil[0][0] == "") else res_mobil[0][0]
+                tot_mobil = "0" if (res_mobil[0][1] == None or res_mobil[0][1] == "") else res_mobil[0][1]
+                # print rekap based on date and shift and gate
+                # vid = int( self.configur['PRINTER']['VID'], 16 )
+                # pid = int( self.configur['PRINTER']['PID'], 16 )
+                # in_ep = int( self.configur['PRINTER']['IN'], 16 )
+                # out_ep = int( self.configur['PRINTER']['OUT'], 16 )
+                # p = Usb(0x0483, 0x5840 , timeout = 0, in_ep = in_ep, out_ep = out_ep)
+                # p=Usb(0x0483, 0x5840, 0, in_ep=0x81, out_ep=0x01)
+
+                # p.set('center', density=0)
+                # p.text("tester....")
+
+                # p.cut(mode="FULL")
+                # p.close() 
+                
+                print("\n\n\n==================================")
+                print("REKAP KASIR TGL: ", dt_shift)
+                print("KD.SHIFT:", Main.kd_shift)
+                print("NO POS/GATE:", Main.no_pos)
+                
+                print("JUM.MOTOR:", j_motor)
+                print("TOT.HARGA:", tot_motor)
+
+                print("JUM.MOBIL:", j_mobil)
+                print("TOT.HARGA:", tot_mobil)
+                print("==================================\n\n\n")
+
+                # print("res: ", x)
+                
+        popup_window = PopupWindow()
+        
+        popup_window.exec_()
+
     def Help(self):
         dlg = QMessageBox(self.window)
         dlg.setWindowTitle( "Keterangan Shortcut" )
         
+        # CTRL + o ==> Open Gate(darurat) \n\n
+        # CTRL + l ==> Lost Ticket
+
         dlg.setText(
         """
-        CTRL + h ==> HELP  \n\n
+        CTRL + i ==> HELP  \n\n
         CTRL + t ==> NOPOL Focus \n\n
+        CTRL + p ==> REKAP \n\n
         CTRL + e ==> LOGOUT \n\n
-        CTRL + o ==> Open Gate(darurat) \n\n
-        CTRL + l ==> Lost Ticket
         """)
         
         dlg.setStyleSheet("QLabel{margin-bottom:20px; margin-top: 20px; font-weight: 600; font-size: 13px;}");
@@ -1276,6 +1441,9 @@ class Main(Util, View):
         
         elif command=="help":
             shortcut.activated.connect( self.Help )
+        
+        elif command=="rekap":
+            shortcut.activated.connect( self.Rekap )
             
         elif command=="open-gate":
             shortcut.activated.connect( self.openGate )
@@ -1586,9 +1754,9 @@ class Main(Util, View):
                 # create table widget
 
                 # fetch data from DB
-                query = self.exec_query("SELECT id, username, user_level FROM users", "SELECT")
+                query = self.exec_query("SELECT id, username, user_level, nik FROM users", "SELECT")
                 rows_count = len(query)
-                cols = 3
+                cols = 4
 
                 self.user_table.resizeRowsToContents()
                 self.user_table.horizontalHeader().setStretchLastSection(True)
@@ -1596,7 +1764,7 @@ class Main(Util, View):
                 self.user_table.setRowCount(rows_count)
                 self.user_table.setColumnCount(cols)
 
-                self.user_table.setHorizontalHeaderLabels(["id", "Username", "Level"])
+                self.user_table.setHorizontalHeaderLabels(["id", "Username", "Level", "NIK"])
                 self.user_table.setStyleSheet(View.table_style)
 
                 self.user_table.horizontalHeader().setDefaultAlignment(Qt.AlignLeft)
@@ -1625,6 +1793,17 @@ class Main(Util, View):
                                     },
                                     {
                                         "name":"add_uname",
+                                        "category":"lineEdit",
+                                        "style":self.primary_input
+                                    },
+                                    {
+                                        "name":"lbl_add_nik",
+                                        "category":"label",
+                                        "text": "NIK",
+                                        "style":self.primary_lbl + margin_top
+                                    },
+                                    {
+                                        "name":"add_nik",
                                         "category":"lineEdit",
                                         "style":self.primary_input
                                     },
@@ -1660,7 +1839,7 @@ class Main(Util, View):
                                         "name":"input_user_level",
                                         "category":"comboBox",
                                         "items": ["Admin","Pegawai", "Kasir"],
-                                        "style":self.primary_combobox
+                                        "style":self.primary_combobox + "font-weight: 500; background:#fff; color:#000;"
                                     },
                                     {
                                         "name":"btn_add_user",
@@ -1786,9 +1965,9 @@ class Main(Util, View):
                 # create table widget
 
                 # fetch data from DB
-                query = self.exec_query("SELECT id, nik, nama, hp, alamat, jm_masuk, jm_keluar, no_pos, shift FROM kasir", "SELECT")
+                query = self.exec_query("SELECT id, nik, nama, hp, alamat, jm_masuk, jm_keluar, no_pos, jns_pos, shift FROM kasir", "SELECT")
                 rows_count = len(query)
-                cols = 9
+                cols = 10
 
                 self.kasir_table.resizeRowsToContents()
                 self.kasir_table.horizontalHeader().setStretchLastSection(True)
@@ -1796,12 +1975,12 @@ class Main(Util, View):
                 self.kasir_table.setRowCount(rows_count)
                 self.kasir_table.setColumnCount(cols)
 
-                self.kasir_table.setHorizontalHeaderLabels(["id", "NIK", "Nama", "HP", "Alamat", "Jam Masuk", "Jam Kel", "POS/GATE", "SHIFT"])
+                self.kasir_table.setHorizontalHeaderLabels(["id", "NIK", "Nama", "HP", "Alamat", "Jam Masuk", "Jam Kel", "NO POS/GATE", "JNS POS", "SHIFT"])
                 self.kasir_table.setStyleSheet(View.table_style)
 
                 self.kasir_table.horizontalHeader().setDefaultAlignment(Qt.AlignLeft)
                 self.kasir_table.setColumnHidden(0, True) #hide id column
-                
+                # table disini
                 self.fillTable(self.kasir_table, cols, query)
 
                 # create edit & delete section
@@ -1870,7 +2049,7 @@ class Main(Util, View):
                                     },
                                     {
                                         "name":"add_jam_masuk",
-                                        "category":"lineEdit",
+                                        "category":"lineEditHours",
                                         "style":self.primary_input
                                     },
                                     {
@@ -1881,7 +2060,7 @@ class Main(Util, View):
                                     },
                                     {
                                         "name":"add_jam_keluar",
-                                        "category":"lineEdit",
+                                        "category":"lineEditHours",
                                         "style":self.primary_input
                                     },
                                     {
@@ -1892,9 +2071,23 @@ class Main(Util, View):
                                     },
                                     {
                                         "name":"add_nmr_pos",
-                                        "category":"lineEditInt",
-                                        "style":self.primary_input
+                                        "category":"comboBox",
+                                        "items":["1", "2", "3", "4", "5", "6"],
+                                        "style":self.primary_combobox + "font-weight: 500; background:#fff; color:#000;"
                                     },
+                                    {
+                                        "name":"lbl_add_jns_pos",
+                                        "category":"label",
+                                        "text": "Jns Pos/Gate",
+                                        "style":self.primary_lbl + "margin-top:15px;"
+                                    },
+                                    {
+                                        "name":"add_jns_pos",
+                                        "category":"comboBox",
+                                        "items": ["motor","mobil"],
+                                        "style":self.primary_combobox + "font-weight: 500; background:#fff; color:#000;"
+                                    },
+
                                     {
                                         "name":"lbl_shift",
                                         "category":"label",
@@ -1904,8 +2097,8 @@ class Main(Util, View):
                                     {
                                         "name":"add_nmr_shift",
                                         "category":"comboBox",
-                                        "items":["shift-1", "shift-2", "shift-3", "shift-4", "shift-5"],
-                                        "style":self.primary_combobox + "background:none; color:#000;"
+                                        "items":["shift-1", "shift-2", "shift-3", "shift-4", "shift-5", "shift-5"],
+                                        "style":self.primary_combobox + "background:#fff; color:#000;"
                                     },
                                     {
                                         "name":"btn_add_kasir",
@@ -2898,6 +3091,7 @@ class Main(Util, View):
                 jns_kendaraan_container = QWidget()
                 stat_kendaraan_container = QWidget()
                 jns_trans_container = QWidget()
+                gate_container = QWidget()
                 shift_container = QWidget()
                 prev_next_cont_widget = QWidget()
                 total_income_wgt = QWidget()
@@ -2905,7 +3099,6 @@ class Main(Util, View):
                 
                 filter_main_wgt, filter_main_lay = self.CreateContainer( QVBoxLayout() )
                 kendaraan_container_wgt, kendaraan_container_wgt_lay = self.CreateContainer( QHBoxLayout() )
-
                 gb_cari_lay = QVBoxLayout()
                 gb_waktu_lay = QHBoxLayout()
                 gb_kendaraan_lay = QHBoxLayout()
@@ -2924,6 +3117,7 @@ class Main(Util, View):
                 jns_kendaraan_lay = QVBoxLayout()
                 stat_kendaraan_lay = QVBoxLayout()
                 jns_trans_lay = QVBoxLayout()
+                gate_lay = QVBoxLayout()
                 shift_lay = QVBoxLayout()
                 prev_next_cont_lay = QHBoxLayout()
                 total_income_lay = QHBoxLayout()
@@ -2951,8 +3145,12 @@ class Main(Util, View):
                 lbl_jns_kendaraan = QLabel("jns kendaraan:")
                 lbl_stat_kendaraan = QLabel("stat kendaraan:")
                 lbl_jns_transaksi = QLabel("jns transaksi:")
+                lbl_gate = QLabel("gate:")
                 lbl_shift = QLabel("shift:")
                 lbl_sd = QLabel("s/d")
+                lbl_sd2 = QLabel("s/d")
+                lbl_sd3 = QLabel("s/d")
+                lbl_sd4 = QLabel("s/d")
                 prev_btn = QPushButton("prev")
                 next_btn = QPushButton("next")
                 self.lbl_count = QLabel()
@@ -2973,7 +3171,7 @@ class Main(Util, View):
                 self.input_jam1.setMinimum(0)
                 self.input_jam1.setMaximum(23)
                 
-                self.input_jam2.setMinimum(1)
+                self.input_jam2.setMinimum(0)
                 self.input_jam2.setMaximum(24)
 
                 kendaraan = ["Mobil", "Motor", "Semua"]
@@ -2987,11 +3185,15 @@ class Main(Util, View):
 
                 trans = ["Casual", "Voucher", "Semua"]
                 self.pilih_jns_transaksi = QComboBox()
+                self.pilih_gate = QComboBox()
                 self.pilih_shift = QComboBox()
                 self.pilih_jns_transaksi.addItems( trans )
-                self.pilih_shift.addItems( ["s1", "s2", "s3", "s4", "s5", "Semua"] )
+                self.pilih_gate.addItems( ["Semua", "1", "2", "3", "4", "5", "6"] ) 
+
+                # shift must auto form DB
+                self.pilih_shift.addItems( ["shift-1", "shift-2", "shift-3", "shift-4", "shift-5", "shift-6", "Semua"] ) 
                 self.pilih_jns_transaksi.setCurrentIndex(2)
-                self.pilih_shift.setCurrentIndex( 5 )
+                self.pilih_shift.setCurrentIndex( 6 )
                 
             
                 groupboxes = [
@@ -2999,14 +3201,14 @@ class Main(Util, View):
                             "name": "gb_cari",
                             "category":"GroupBox",
                             "min_width": 550,
-                            "min_height": 80,
+                            "min_height": 75,
                             "style": self.filter_gb_styling
                         },
                         {
                             "name": "gb_waktu",
                             "category":"GroupBox",
                             "min_width": 550,
-                            "min_height": 80,
+                            "min_height": 70,
                             "style": self.filter_gb_styling
                         },
                     ]
@@ -3016,14 +3218,14 @@ class Main(Util, View):
                             "name": "gb_kendaraan",
                             "category":"GroupBox",
                             "min_width": 270,
-                            "min_height": 80,
+                            "max_height": 100,
                             "style": self.filter_gb_styling
                         },
                         {
                             "name": "gb_transaksi",
                             "category":"GroupBox",
                             "min_width": 270,
-                            "min_height": 80,
+                            "max_height": 100,
                             "style": self.filter_gb_styling
                         },
                     ]
@@ -3048,35 +3250,66 @@ class Main(Util, View):
                 laporan_tabs_container_widget.setStyleSheet("background: #151930;")
                 scroll.setStyleSheet("border: none;")
                 self.laporan_stack.setStyleSheet("background: #151930;")
-                lbl_filter.setStyleSheet( View.primary_lbl + "}" )
+                lbl_filter.setStyleSheet( View.primary_lbl + "margin-bottom: 0px;}" )
                 lbl_cari.setStyleSheet( View.primary_lbl + "}" )
                 lbl_sd.setMaximumWidth(30)
+                lbl_sd.setMaximumHeight(20)
                 lbl_sd.setStyleSheet( View.primary_lbl + "}" )
-                lbl_tgl.setStyleSheet( View.primary_lbl + "}" )
+
+                lbl_sd2.setMaximumWidth(30)
+                lbl_sd2.setMaximumHeight(20)
+                lbl_sd2.setStyleSheet( View.primary_lbl + "}" )
+                
+                lbl_sd3.setMaximumWidth(30)
+                lbl_sd3.setMaximumHeight(20)
+                lbl_sd3.setStyleSheet( View.primary_lbl + "}" )
+                
+                lbl_sd4.setMaximumWidth(30)
+                lbl_sd4.setMaximumHeight(20)
+                lbl_sd4.setStyleSheet( View.primary_lbl + "}" )
+                
+                lbl_tgl.setMaximumHeight(20)
+                lbl_tgl.setStyleSheet( View.primary_lbl + "margin-bottom:0px; }" )
                 self.radio_btn_menit.setStyleSheet( View.primary_radio + "}" )
                 self.radio_btn_jam.setStyleSheet( View.primary_radio + "}" )
                 lbl_jns_kendaraan.setStyleSheet( View.primary_lbl + "}" )
                 lbl_stat_kendaraan.setStyleSheet( View.primary_lbl + "}" )
+                lbl_gate.setStyleSheet( View.primary_lbl + "}" )
                 lbl_jns_transaksi.setStyleSheet( View.primary_lbl + "}" )
                 lbl_shift.setStyleSheet( View.primary_lbl + " height: 25px; }" )
                 self.input_cari.setStyleSheet( View.primary_input + " height: 25px; }" )
                 
-                self.pilih_tgl1.setStyleSheet( View.primary_date + "width: 250px; height: 25px; border: 2px solid red; }" )
-                self.pilih_tgl2.setStyleSheet( View.primary_date + "width: 250px; height: 25px; }" )
-                
+                self.pilih_tgl1.setStyleSheet( View.primary_date + "width: 250px; height: 20px; }" )
+                self.pilih_tgl2.setStyleSheet( View.primary_date + "width: 250px; height: 20px; }" )
+                self.pilih_tgl1.setMaximumHeight(20)
+                self.pilih_tgl2.setMaximumHeight(20)
+
                 self.pilih_jns_kendaraan.setStyleSheet( View.primary_combobox + " height: 25px; background:#fff; color: #000; }" )
                 self.pilih_stat_kendaraan.setStyleSheet( View.primary_combobox + " height: 25px; background:#fff; color:#000; }" )
                 self.pilih_jns_transaksi.setStyleSheet( View.primary_combobox + " height: 25px; background:#fff; color:#000; }" )
+                self.pilih_gate.setStyleSheet( View.primary_combobox + " height: 25px; background:#fff; color:#000; }" )
                 self.pilih_shift.setStyleSheet( View.primary_combobox + " height: 25px; background:#fff; color:#000; }" )
-                self.input_menit1.setStyleSheet( View.primary_spinbox + "height: 25px; }" )
-                self.input_menit2.setStyleSheet( View.primary_spinbox + "height: 25px; }" )
-                self.input_jam1.setStyleSheet( View.primary_spinbox + "height: 25px; }" )
-                self.input_jam2.setStyleSheet( View.primary_spinbox + "height: 25px; }" )
+                
+                self.pilih_jns_kendaraan.setMaximumHeight(20)
+                self.pilih_stat_kendaraan.setMaximumHeight(20)
+                self.pilih_jns_transaksi.setMaximumHeight(20)
+                self.pilih_gate.setMaximumHeight(20)
+                self.pilih_shift.setMaximumHeight(20)
+
+                self.input_menit1.setStyleSheet( View.primary_spinbox + "height: 20px; }" )
+                self.input_menit2.setStyleSheet( View.primary_spinbox + "height: 20px; }" )
+                self.input_menit1.setMaximumHeight(20)
+                self.input_menit2.setMaximumHeight(20)
+
+                self.input_jam1.setStyleSheet( View.primary_spinbox + "height: 20px; }" )
+                self.input_jam2.setStyleSheet( View.primary_spinbox + "height: 20px; }" )
+                self.input_jam1.setMaximumHeight(20)
+                self.input_jam2.setMaximumHeight(20)
 
                 action_widget.setStyleSheet("border: none;")
                 row_label.setStyleSheet("color:#fff; font-size:13px; font-weight: 500; background:#384F67; margin-bottom: 5px; padding:5px;")
                 row_label_print.setStyleSheet("color:#fff; font-size:13px; font-weight: 500; background:#384F67; margin-top:35px; margin-bottom: 5px; padding:5px;")
-                self.row_opsi_print.setStyleSheet("font-size:13px; background:#fff; margin-bottom: 5px; padding:5px;")
+                self.row_opsi_print.setStyleSheet( View.primary_combobox + " height: 25px; background:#fff; color: #000; }" )
                 self.row_info_laporan.setStyleSheet("background:#fff; padding:8px; margin-bottom: 5px; color: #000; border:none;")
                 row_search.setStyleSheet(View.edit_btn_action)
                 row_detail.setStyleSheet(View.detail_btn_action)
@@ -3126,12 +3359,15 @@ class Main(Util, View):
                 tgl_input_container.setLayout( tgl_input_lay )
                 tab1_h_widget.setLayout(tab1_h_layout)
                 lama_container_menit.setLayout( lama_container_menit_lay )
+                lama_input_menit_lay.setContentsMargins(0,0,0,0)
                 lama_input_menit_container.setLayout( lama_input_menit_lay )
                 lama_container_jam.setLayout( lama_container_jam_lay )
+                lama_input_jam_lay.setContentsMargins(0,0,0,0)
                 lama_input_jam_container.setLayout( lama_input_jam_lay )
                 jns_kendaraan_container.setLayout( jns_kendaraan_lay )
                 stat_kendaraan_container.setLayout( stat_kendaraan_lay )
                 jns_trans_container.setLayout( jns_trans_lay )
+                gate_container.setLayout( gate_lay )
                 shift_container.setLayout( shift_lay )
                 prev_next_cont_widget.setLayout( prev_next_cont_lay )
                 total_income_wgt.setLayout( total_income_lay )
@@ -3139,15 +3375,15 @@ class Main(Util, View):
 
                 # add widget
                 self.laporan_container_lay.addWidget(laporan_tabs_container_widget)
-
                 gb_cari_lay.addWidget( lbl_cari )
                 gb_cari_lay.addWidget( self.input_cari )
+                
                 filter_main_lay.addWidget( kendaraan_container_wgt )
 
                 action_lay.addWidget(row_label)
                 action_lay.addWidget(self.row_info_laporan)
                 action_lay.addWidget(row_search)
-                action_lay.addWidget(row_detail)
+                # action_lay.addWidget(row_detail)
                 action_lay.addWidget(row_label_print)
                 action_lay.addWidget(self.row_opsi_print)
                 action_lay.addWidget(self.row_print)
@@ -3163,8 +3399,9 @@ class Main(Util, View):
                 gb_waktu_lay.addWidget( lama_container_jam )
                 tgl_container_lay.addWidget( lbl_tgl )
                 tgl_container_lay.addWidget( tgl_input_container )
+                tgl_input_lay.setContentsMargins(0,0,0,0)
                 tgl_input_lay.addWidget( self.pilih_tgl1 )
-                tgl_input_lay.addWidget( lbl_sd )
+                tgl_input_lay.addWidget( lbl_sd3 )
                 tgl_input_lay.addWidget( self.pilih_tgl2 )
 
                 lama_container_menit_lay.addWidget( self.radio_btn_menit )
@@ -3173,7 +3410,7 @@ class Main(Util, View):
                 lama_container_jam_lay.addWidget( lama_input_jam_container )
                 
                 lama_input_menit_lay.addWidget( self.input_menit1 )
-                lama_input_menit_lay.addWidget( lbl_sd )
+                lama_input_menit_lay.addWidget( lbl_sd4 )
                 lama_input_menit_lay.addWidget( self.input_menit2 )
                 
                 lama_input_jam_lay.addWidget( self.input_jam1 )
@@ -3187,9 +3424,12 @@ class Main(Util, View):
                 stat_kendaraan_lay.addWidget( lbl_stat_kendaraan )
                 stat_kendaraan_lay.addWidget( self.pilih_stat_kendaraan )
                 gb_transaksi_lay.addWidget( jns_trans_container )
+                gb_transaksi_lay.addWidget( gate_container )
                 gb_transaksi_lay.addWidget( shift_container )
                 jns_trans_lay.addWidget( lbl_jns_transaksi )
                 jns_trans_lay.addWidget( self.pilih_jns_transaksi )
+                gate_lay.addWidget( lbl_gate )
+                gate_lay.addWidget( self.pilih_gate )
                 shift_lay.addWidget( lbl_shift )
                 shift_lay.addWidget( self.pilih_shift )
                 prev_next_cont_lay.addWidget( prev_btn )
@@ -3236,7 +3476,7 @@ class Main(Util, View):
                 self.laporan_table.horizontalHeader().setStretchLastSection(True)
                 self.laporan_table.setRowCount( rows_count )
                 self.laporan_table.setColumnCount( cols )
-                self.laporan_table.setHorizontalHeaderLabels(["id", "No trans" ,"Nopol", "J.kendaraan", "Pos", "Tgl masuk", "Tgl keluar", "Lama Parkir", "Status parkir", "Biaya", "J.transaksi", "Shift"])
+                self.laporan_table.setHorizontalHeaderLabels(["id", "No trans" ,"Nopol", "J.kendaraan", "Pos/Gate", "Tgl masuk", "Tgl keluar", "Lama Parkir", "Status parkir", "Biaya", "J.transaksi", "Shift"])
                 self.laporan_table.setStyleSheet(View.table_style)
 
                 self.laporan_table.horizontalHeader().setDefaultAlignment(Qt.AlignLeft)
@@ -3341,7 +3581,7 @@ class Main(Util, View):
             self.app_stat = True
             sys.exit(self.app.exec_())
     
-    def KasirDashboard(self):
+    def KasirDashboard(self, nik=""):
         
         ####### get ipcam ip ########
         
@@ -3478,7 +3718,7 @@ class Main(Util, View):
                             debug.error("Failed to read from video stream!")
                             raise Exception("Failed to read from video stream!")   
                         
-                        ret, frame = self.capture.read()
+                        ret, frame = self.capture.read() 
                         if ret:
                             rgbImage = cv2.cvtColor(frame, cv2.COLOR_BGR2RGB)
                     
@@ -3493,7 +3733,7 @@ class Main(Util, View):
                         self.capture = None
                         self.msleep(5000)
                         self.is_running = True
-
+                        
                         debug.info("something wrong with ipcam 1 .... ")
                         debug.error(str(e))
                         debug.info("retrying to connect.... ")
@@ -3518,10 +3758,9 @@ class Main(Util, View):
         ################# create windows layout ###############
         # header
         header_img = QLabel()
-        header_img.setPixmap(QPixmap('header_placeholder.png'))
+        # header_img.setPixmap(QPixmap('header_placeholder.png'))
         header_img.setAlignment(Qt.AlignCenter)
-        # header_img.setMaximumWidth(1024)
-        header_img.setMaximumHeight(80)
+        # header_img.setMaximumHeight(80)
         
         header_container = QWidget()
         header_container_lay = QHBoxLayout()
@@ -3653,7 +3892,7 @@ class Main(Util, View):
                     },
                     {
                         "name":"lbl_legenda",
-                        "text":"Tekan CTRL+h --> untuk menu legenda/ket.shortcut",
+                        "text":"Tekan CTRL+i --> untuk menu legenda/ket.shortcut",
                         "category":"label",
                         "style":self.primary_lbl + "background: #0984e3; padding:5px; color: #fff; font-style:italic;"
                     }]
@@ -3778,15 +4017,15 @@ class Main(Util, View):
         # self.stream_url_2 = 'http://192.168.100.69:4747/video'
 
         # ======================= enable / disable cam thread for kasir ===================
-        # self.th = playCam1()
-        # self.th = playCam1(parent=self.window)
-        # self.th.cp.connect(self.setImageKasir) 
-        # self.th.start()
+        self.th = playCam1()
+        self.th = playCam1(parent=self.window)
+        self.th.cp.connect(self.setImageKasir) 
+        self.th.start()
         
-        # self.th2 = playCam2()
-        # self.th2 = playCam2(parent=self.window)
-        # self.th2.cp2.connect(self.setImageKasir2) 
-        # self.th2.start()
+        self.th2 = playCam2()
+        self.th2 = playCam2(parent=self.window)
+        self.th2.cp2.connect(self.setImageKasir2) 
+        self.th2.start()
         
 
         # disable check roller
@@ -3820,9 +4059,8 @@ class Main(Util, View):
         ###################
 
         footer_lbl = QLabel()
-        footer_lbl.setPixmap(QPixmap('footer_placeholder.png'))
-        # footer_lbl.setMaximumWidth(1020)
-        footer_lbl.setMaximumHeight(40)
+        # footer_lbl.setPixmap(QPixmap('footer_placeholder.png'))
+        # footer_lbl.setMaximumHeight(40)
         footer_lbl.setAlignment( Qt.AlignCenter )
 
         lbl1.setStyleSheet("background: #fade72; color: #222f3e; font-weight:600; padding: 5px;")
@@ -3833,7 +4071,7 @@ class Main(Util, View):
         ###### set date & time value
 
         # Get & set current date from server via socket
-        gd = self.get_date()
+        # gd = self.get_date()
         
         current_date = QDate.currentDate().toString('MM/dd/yyyy')
         date_lbl.setText("TANGGAL: " + current_date)
@@ -3864,13 +4102,18 @@ class Main(Util, View):
 
         # self.keyShortcut(keyCombination="Ctrl+b", command="pay")
         
-        # lap user bermasalah
+        # lost ticket
         self.keyShortcut(keyCombination="Ctrl+l", command="lost-ticket")
         
+        # logout
         self.keyShortcut(keyCombination="Ctrl+e", command="logout")
         
-        self.keyShortcut(keyCombination="Ctrl+h", command="help")
+        # help
+        self.keyShortcut(keyCombination="Ctrl+i", command="help")
         
+        # cetak rekap per-shift
+        self.keyShortcut(keyCombination="Ctrl+p", command="rekap")
+
         # save btn - lap user bermasalah
         # self.keyShortcut(keyCombination="Ctrl+s", command="save")
         
@@ -3917,9 +4160,25 @@ class Main(Util, View):
         self.time_lbl.setText("JAM: "+ current_time)
     
     def kasirLogout(self):
-        # self.th.stop()
-        # self.th2.stop()    
+        
         try:
+            
+            ################ close all stream connection ##################
+            # putuskan hubungan dengan cv2 yg berjalan 
+            self.th.capture.release()
+            self.th2.capture.release()
+
+            # putuskan hubungan dengan signal-slots 
+            self.th.cp.disconnect(self.setImageKasir2)    
+            self.th2.cp2.disconnect(self.setImageKasir2)    
+            
+            # matikan thread
+            self.th.stop()    
+            self.th2.stop()    
+            ##############################################################
+            
+            print("STOP IPCAM 2 THREAD")   
+
             self.closeWindow(self.window)
             self.Login()
         except Exception as e:
@@ -4038,7 +4297,7 @@ class Main(Util, View):
             self.home_btn.setIcon( QIcon(self.icon_path+"home.png") )
             self.home_btn.setStyleSheet(View.left_menu_btn)
             self.home_lbl = ClickableLabel("Home")
-            self.home_lbl.setFont( self.fontStyle("Helvetica", 10, 500) )
+            self.home_lbl.setFont( self.fontStyle("Helvetica", 12, 500) )
             self.home_lbl.setStyleSheet(View.left_menu_lbl)
 
             left_menu_horizontal = QHBoxLayout()
@@ -4056,7 +4315,7 @@ class Main(Util, View):
             self.rfid_btn.setIcon( QIcon(self.icon_path+"share.png") )
             self.rfid_btn.setStyleSheet(View.left_menu_btn)
             self.rfid_lbl = ClickableLabel("RFID")
-            self.rfid_lbl.setFont( self.fontStyle("Helvetica", 10, 500) )
+            self.rfid_lbl.setFont( self.fontStyle("Helvetica", 12, 500) )
             self.rfid_lbl.setStyleSheet(View.left_menu_lbl)
 
             left_menu_horizontal = QHBoxLayout()
@@ -4076,7 +4335,7 @@ class Main(Util, View):
             self.users_btn.setIcon( QIcon(self.icon_path+"users.png") )
             self.users_btn.setStyleSheet(View.left_menu_btn)
             self.users_lbl = ClickableLabel("Users")
-            self.users_lbl.setFont( self.fontStyle("Helvetica", 10, 500) )
+            self.users_lbl.setFont( self.fontStyle("Helvetica", 12, 500) )
             self.users_lbl.setStyleSheet(View.left_menu_lbl)
 
             left_menu_horizontal = QHBoxLayout()
@@ -4094,7 +4353,7 @@ class Main(Util, View):
             self.kasir_btn.setIcon( QIcon(self.icon_path+"computer.png") )
             self.kasir_btn.setStyleSheet(View.left_menu_btn)
             self.kasir_lbl = ClickableLabel("Kasir")
-            self.kasir_lbl.setFont( self.fontStyle("Helvetica", 10, 500) )
+            self.kasir_lbl.setFont( self.fontStyle("Helvetica", 12, 500) )
             self.kasir_lbl.setStyleSheet(View.left_menu_lbl)
 
             left_menu_horizontal = QHBoxLayout()
@@ -4112,7 +4371,7 @@ class Main(Util, View):
             self.karcis_btn.setIcon( QIcon(self.icon_path+"receipt.png") )
             self.karcis_btn.setStyleSheet(View.left_menu_btn)
             self.karcis_lbl = ClickableLabel("karcis")
-            self.karcis_lbl.setFont( self.fontStyle("Helvetica", 10, 500) )
+            self.karcis_lbl.setFont( self.fontStyle("Helvetica", 12, 500) )
             self.karcis_lbl.setStyleSheet(View.left_menu_lbl)
 
             left_menu_horizontal = QHBoxLayout()
@@ -4130,7 +4389,7 @@ class Main(Util, View):
             self.tarif_btn.setIcon( QIcon(self.icon_path+"usd-circle.png") )
             self.tarif_btn.setStyleSheet(View.left_menu_btn)
             self.tarif_lbl = ClickableLabel("Tarif")
-            self.tarif_lbl.setFont( self.fontStyle("Helvetica", 10, 500) )
+            self.tarif_lbl.setFont( self.fontStyle("Helvetica", 12, 500) )
             self.tarif_lbl.setStyleSheet(View.left_menu_lbl)
 
             left_menu_horizontal = QHBoxLayout()
@@ -4148,7 +4407,7 @@ class Main(Util, View):
             self.voucher_btn.setIcon( QIcon(self.icon_path+"ticket.png") )
             self.voucher_btn.setStyleSheet(View.left_menu_btn)
             self.voucher_lbl = ClickableLabel("Voucher")
-            self.voucher_lbl.setFont( self.fontStyle("Helvetica", 10, 500) )
+            self.voucher_lbl.setFont( self.fontStyle("Helvetica", 12, 500) )
             self.voucher_lbl.setStyleSheet(View.left_menu_lbl)
 
             left_menu_horizontal = QHBoxLayout()
@@ -4166,7 +4425,7 @@ class Main(Util, View):
             self.laporan_btn.setIcon( QIcon(self.icon_path+"document-signed.png") )
             self.laporan_btn.setStyleSheet(View.left_menu_btn)
             self.laporan_lbl = ClickableLabel("Laporan")
-            self.laporan_lbl.setFont( self.fontStyle("Helvetica", 10, 500) )
+            self.laporan_lbl.setFont( self.fontStyle("Helvetica", 12, 500) )
             self.laporan_lbl.setStyleSheet(View.left_menu_lbl)
 
             left_menu_horizontal = QHBoxLayout()
@@ -4184,7 +4443,7 @@ class Main(Util, View):
             self.logout_btn.setIcon( QIcon(self.icon_path+"sign-out-alt.png") )
             self.logout_btn.setStyleSheet(View.left_menu_btn)
             self.logout_lbl = ClickableLabel("Logout")
-            self.logout_lbl.setFont( self.fontStyle("Helvetica", 10, 500) )
+            self.logout_lbl.setFont( self.fontStyle("Helvetica", 12, 500) )
             self.logout_lbl.setStyleSheet(View.left_menu_lbl)
 
             left_menu_horizontal = QHBoxLayout()
@@ -4221,7 +4480,7 @@ class Main(Util, View):
             self.stacked_widget.addWidget(self.tarif_container)     # --> 5
             self.stacked_widget.addWidget(self.voucher_container)   # --> 6
             self.stacked_widget.addWidget(self.laporan_container)   # --> 7
-            self.stacked_widget.setCurrentIndex(0)
+            self.stacked_widget.setCurrentIndex(7)
             
             # set the animation stacked widget
             self.stacked_animation = QPropertyAnimation(self.stacked_widget, b"geometry")

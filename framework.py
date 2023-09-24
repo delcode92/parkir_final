@@ -380,7 +380,7 @@ class View:
     """
     
     primary_date = """QCalendarWidget QTableView {
-                        background-color: white;
+                        background-color: #3B3B98;
                     }
                     QDateEdit{
                         height:30px; 
@@ -412,7 +412,7 @@ class View:
                         QComboBox{
                             height:35px; 
                             background-color: blue;
-                            selection-background-color: #192038;
+                            selection-background-color: grey;
                             color: #fff;
                             font-family: Helvetica;
                             font-size: 14px;
@@ -440,7 +440,7 @@ class View:
     filter_gb_styling = """QGroupBox { 
                         font-size: 14px; 
                         border: 1px solid #394245; 
-                        margin-top: 6px; 
+                        margin-top: 0px; 
                         padding-left:15px; 
                         padding-right:15px;
                     
@@ -787,6 +787,11 @@ class Util(Controller ):
                         self.components[i["name"]] = QSpinBox(parent)
                     case "lineedit":
                         self.components[i["name"]] = QLineEdit(parent)
+                    case "lineedithours":
+                        self.components[i["name"]] = QLineEdit(parent)
+                        self.components[i["name"]].setText("00:00")
+                        self.components[i["name"]].setInputMask("HH:HH")
+
                     case "lineeditpassword":
                         self.components[i["name"]] = QLineEdit(parent)
                         self.components[i["name"]].setEchoMode(QLineEdit.Password)
