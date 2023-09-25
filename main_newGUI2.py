@@ -1263,10 +1263,15 @@ class Main(Util, View):
         class PopupWindow(QDialog):
             
             def __init__(self):
+                 
+
                 super().__init__()
                 self.initConfig()
                 self.connect_to_postgresql()
                 
+                # self.p=Usb(0x0483, 0x5840, 0, in_ep=0x81, out_ep=0x03)
+                # self.p.set('center', density=0)
+
                 self.resize(400, 200)
                 self.setContentsMargins(15,15,15,15)
 
@@ -1291,6 +1296,7 @@ class Main(Util, View):
                 self.setLayout(layout)
                 self.setWindowModality(Qt.ApplicationModal)
                 self.setWindowTitle("Rekap SHIFT")
+
             
             def initConfig(self):
                 try:
@@ -1298,6 +1304,15 @@ class Main(Util, View):
                     
                     self.configur = ConfigParser()
                     self.configur.read(ini)
+
+                    vid = int( self.configur['PRINTER_KASIR']['VID'], 16 )
+                    pid = int( self.configur['PRINTER_KASIR']['PID'], 16 )
+                    in_ep = int( self.configur['PRINTER_KASIR']['IN'], 16 )
+                    out_ep = int( self.configur['PRINTER_KASIR']['OUT'], 16 )
+
+                    self.print_kasir=Usb(vid, pid, 0, in_ep=in_ep, out_ep=out_ep)
+                    self.print_kasir.set('left', density=0)
+
                 except Exception as e:
                     print(str(e))
 
@@ -1308,7 +1323,6 @@ class Main(Util, View):
     
             def connect_to_postgresql(self):
                 try:
-                    
                     conn = psycopg2.connect(
                         database=self.configur["db"]["db_name"], user=self.configur["db"]["username"], password=self.configur["db"]["password"], host=self.configur["db"]["host"], port= self.configur["db"]["port"]
                     )
@@ -1319,10 +1333,12 @@ class Main(Util, View):
                     print( str(e) )    
 
             def exec_query(self, query, type=""):
-        
+
                 try:
                     self.db_cursor.execute(query)
-                    print("\nsuccess execute query")
+                    print("\nsuccess execute query:")
+                    print(query)
+                    print("================")
 
                     if type.lower() == "":    
                         return True
@@ -1341,6 +1357,7 @@ class Main(Util, View):
                     return cols,data
 
             def date_enter(self):
+                
                 # get date 
                 dt_shift = self.date.text()
                 # dt_shift = dt_shift.replace("/", "-" )
@@ -1348,10 +1365,7 @@ class Main(Util, View):
                 day, month, year = dt_shift.split("/")
                 parse_tgl = f"{year}-{month}-{day}"
 
-                # print(f"SELECT count(*) from karcis where cast(datetime as date)='{parse_tgl}' AND status_parkir=true AND gate='{Main.no_pos}' AND kd_shift='{Main.kd_shift}'")
-
                 res_motor = self.exec_query(f"select count(*) as jml, SUM(tarif) as total from karcis where cast(datetime as date)='{parse_tgl}' AND (jenis_kendaraan='motor' or jenis_kendaraan='Motor') AND status_parkir=true AND gate='{Main.no_pos}' AND kd_shift='{Main.kd_shift}'", "select")
-                
                 res_mobil = self.exec_query(f"select count(*) as jml, SUM(tarif) as total from karcis where cast(datetime as date)='{parse_tgl}' AND (jenis_kendaraan='mobil' or jenis_kendaraan='Mobil') AND status_parkir=true AND gate='{Main.no_pos}' AND kd_shift='{Main.kd_shift}'", "select")
 
                 j_motor = "0" if (res_motor[0][0] == None or res_motor[0][0] == "") else res_motor[0][0]
@@ -1359,33 +1373,25 @@ class Main(Util, View):
 
                 j_mobil = "0" if (res_mobil[0][0] == None or res_mobil[0][0] == "") else res_mobil[0][0]
                 tot_mobil = "0" if (res_mobil[0][1] == None or res_mobil[0][1] == "") else res_mobil[0][1]
+                
                 # print rekap based on date and shift and gate
-                # vid = int( self.configur['PRINTER']['VID'], 16 )
-                # pid = int( self.configur['PRINTER']['PID'], 16 )
-                # in_ep = int( self.configur['PRINTER']['IN'], 16 )
-                # out_ep = int( self.configur['PRINTER']['OUT'], 16 )
-                # p = Usb(0x0483, 0x5840 , timeout = 0, in_ep = in_ep, out_ep = out_ep)
-                # p=Usb(0x0483, 0x5840, 0, in_ep=0x81, out_ep=0x01)
-
-                # p.set('center', density=0)
-                # p.text("tester....")
-
-                # p.cut(mode="FULL")
-                # p.close() 
                 
-                print("\n\n\n==================================")
-                print("REKAP KASIR TGL: ", dt_shift)
-                print("KD.SHIFT:", Main.kd_shift)
-                print("NO POS/GATE:", Main.no_pos)
+                self.print_kasir.text("================\n")
+                self.print_kasir.text(f"REKAP KASIR TGL: {dt_shift}\n")
+                self.print_kasir.text(f"KD.SHIFT: {Main.kd_shift}\n")
+                self.print_kasir.text(f"NO POS/GATE: {Main.no_pos}\n")
                 
-                print("JUM.MOTOR:", j_motor)
-                print("TOT.HARGA:", tot_motor)
+                self.print_kasir.text("----------------\n")
+                self.print_kasir.text(f"JUM.MOTOR: {j_motor}\n")
+                self.print_kasir.text(f"TOT.HARGA: {tot_motor}\n")
+                self.print_kasir.text("----------------\n")
 
-                print("JUM.MOBIL:", j_mobil)
-                print("TOT.HARGA:", tot_mobil)
-                print("==================================\n\n\n")
+                self.print_kasir.text(f"JUM.MOBIL: {j_mobil}\n")
+                self.print_kasir.text(f"TOT.HARGA: {tot_mobil}\n")
+                self.print_kasir.text(f"=================\n")
 
-                # print("res: ", x)
+                self.print_kasir.cut(mode="FULL")
+                self.print_kasir.close()
                 
         popup_window = PopupWindow()
         

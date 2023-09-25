@@ -321,7 +321,11 @@ class Controller(Client):
                 rules = json.loads( query[0][2] )
 
                 # lama parkir ==> (datetime masuk - current time)
+
+                # clear timezone as a time string
                 self.time_now = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+
+                # cast time string to datetime object, so it can be substract with barcode_time
                 self.time_now = datetime.strptime(self.time_now, '%Y-%m-%d %H:%M:%S')
                 barcode_time = query_karcis[0][0].replace(tzinfo=None)
 
