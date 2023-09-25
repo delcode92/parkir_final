@@ -7,7 +7,6 @@
 '''
 
 import os,sys, re, socket, psycopg2, logging, datetime, json, multiprocessing
-import typing
 from PyQt5.QtCore import QObject
 from time import sleep
 from _thread import start_new_thread

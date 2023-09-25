@@ -66,7 +66,7 @@ class Client:
 
             
 
-            sleep(1)
+            sleep(5)
 
             
     def get_date(self):

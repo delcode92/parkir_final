@@ -1,12 +1,10 @@
 import os,sys, re, socket, psycopg2, logging, datetime, json, multiprocessing
-import typing
 from PyQt5.QtCore import QObject
 from time import sleep
 from cv2 import add
 from _thread import start_new_thread
 from framework import *
 from configparser import ConfigParser
-import copy
 
 class Debug():
     
