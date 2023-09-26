@@ -587,12 +587,15 @@ class Controller(Client):
 
 
     def add_user(self):
+        
         uname = self.components["add_uname"].text()    
-        nik = self.components["add_nik"].text()    
+        nik = self.components["add_nik_user"].text()    
         passwd = self.components["add_pass"].text()    
         retype_passwd = self.components["retype_pass"].text()    
         user_level = self.components["input_user_level"].currentText().lower()    
         
+        print("masuk addUser:", nik)
+
         if passwd == retype_passwd:
 
             # save data
@@ -633,7 +636,7 @@ class Controller(Client):
         jm_keluar = self.components["add_jam_keluar"].text()    
         jm_masuk = jm_masuk.replace(" ", "")
         jm_keluar = jm_keluar.replace(" ", "")
-        no_pos = self.components["add_nmr_pos"].text()    
+        no_pos = self.components["add_nmr_pos"].currentText()    
         jns_pos = self.components["add_jns_pos"].currentText()    
         no_shift = self.components["add_nmr_shift"].currentText()    
         
@@ -656,7 +659,7 @@ class Controller(Client):
             self.components["add_alamat"].setText("")    
             self.components["add_jam_masuk"].setText("")    
             self.components["add_jam_keluar"].setText("")    
-            self.components["add_nmr_pos"].setText("")
+            # self.components["add_nmr_pos"].setText("")
             
             # show success message
             
@@ -1526,7 +1529,7 @@ class Controller(Client):
                 
                 # solution stacked widget
                 self.stacked_widget.setCurrentIndex(0)
-                self.stacked_animation.start()
+                # self.stacked_animation.start()
 
             case "kelola rfid":
                 
@@ -1552,7 +1555,7 @@ class Controller(Client):
                 )
 
                 self.stacked_widget.setCurrentIndex(1)
-                self.stacked_animation.start()
+                # self.stacked_animation.start()
             
             case "kelola user":
                 # set active button and label
@@ -1578,7 +1581,7 @@ class Controller(Client):
                 
                 # solution stacked widget
                 self.stacked_widget.setCurrentIndex(2)
-                self.stacked_animation.start()
+                # self.stacked_animation.start()
 
             case "kelola kasir":
                 # set active button and label
@@ -1604,7 +1607,7 @@ class Controller(Client):
 
                 # solution stacked widget
                 self.stacked_widget.setCurrentIndex(3)
-                self.stacked_animation.start()
+                # self.stacked_animation.start()
 
             case "setting karcis":
                 # set active button and label
@@ -1630,7 +1633,7 @@ class Controller(Client):
 
                 # solution stacked widget
                 self.stacked_widget.setCurrentIndex(4)
-                self.stacked_animation.start()
+                # self.stacked_animation.start()
 
             case "kelola tarif":
 
@@ -1657,7 +1660,7 @@ class Controller(Client):
 
                 # solution stacked widget
                 self.stacked_widget.setCurrentIndex(5)
-                self.stacked_animation.start()
+                # self.stacked_animation.start()
 
             case "kelola voucher":
                 # set active button and label
@@ -1683,7 +1686,7 @@ class Controller(Client):
 
                 # solution stacked widget
                 self.stacked_widget.setCurrentIndex(6)
-                self.stacked_animation.start()
+                # self.stacked_animation.start()
  
             case "kelola laporan":
 
@@ -1710,7 +1713,7 @@ class Controller(Client):
 
                 # solution stacked widget
                 self.stacked_widget.setCurrentIndex(7)
-                self.stacked_animation.start()
+                # self.stacked_animation.start()
             
             case "logout":
                 self.closeWindow(self.window)
@@ -3066,7 +3069,7 @@ class Controller(Client):
         
         ################# end table content ######################
 
-        lap_name = f"laporan_perjam_dari_{tgl1}_{tgl2}.pdf"
+        lap_name = f"rekap_perjam_{tgl1}_{tgl2}.pdf"
         self.pdf.output(f'./{lap_name}', 'F')
 
         path = os.path.abspath(lap_name)
@@ -3480,7 +3483,7 @@ class Controller(Client):
 
             ################# end table content ######################
 
-            lap_name = f"lap_{tgl1}_{tgl2}_sts_kend_{s}.pdf"
+            lap_name = f"rekap_tgl_{tgl1}_{tgl2}_sts_kend_{s}.pdf"
             self.pdf.output(f'./{lap_name}', 'F')
 
             path = os.path.abspath(lap_name)
@@ -3565,7 +3568,7 @@ class Controller(Client):
                 self.pdf.cell(w=(self.pw/7), h=self.ch, txt="Tarif", border=1, align='C')
                 self.pdf.ln()
 
-        lap_name = f"laporan_harian_{tgl1}_{tgl2}.pdf"
+        lap_name = f"rekap_semua_{tgl1}_{tgl2}.pdf"
         self.pdf.output(f'./{lap_name}', 'F')
 
         path = os.path.abspath(lap_name)

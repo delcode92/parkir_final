@@ -234,6 +234,7 @@ class Main(Util, View):
                                         {
                                             "name":"add_nik",
                                             "category":"lineEdit",
+                                            "text":res[0][4],
                                             "style":self.primary_input
                                         },
                                         {
@@ -245,6 +246,7 @@ class Main(Util, View):
                                         {
                                             "name":"add_pass",
                                             "category":"lineeditpassword",
+                                            "text":res[0][3],
                                             "style":self.primary_input
                                         },
                                         {
@@ -256,6 +258,7 @@ class Main(Util, View):
                                         {
                                             "name":"retype_pass",
                                             "category":"lineeditpassword",
+                                            "text":res[0][3],
                                             "style":self.primary_input
                                         },
                                         {
@@ -1809,7 +1812,7 @@ class Main(Util, View):
                                         "style":self.primary_lbl + margin_top
                                     },
                                     {
-                                        "name":"add_nik",
+                                        "name":"add_nik_user",
                                         "category":"lineEdit",
                                         "style":self.primary_input
                                     },
@@ -2984,7 +2987,7 @@ class Main(Util, View):
                 self.voucher_table.setRowCount(rows_count)
                 self.voucher_table.setColumnCount(cols)
 
-                self.voucher_table.setHorizontalHeaderLabels(["id", "ID Pel", "Lokasi", "Saldo", "Masa Berlaku", "Jenis Kendaraan"])
+                self.voucher_table.setHorizontalHeaderLabels(["id", "NOPOL / ID Pel", "Lokasi", "Saldo", "Masa Berlaku", "Jenis Kendaraan"])
                 self.voucher_table.setStyleSheet(View.table_style)
 
                 self.voucher_table.horizontalHeader().setDefaultAlignment(Qt.AlignLeft)
@@ -3009,7 +3012,7 @@ class Main(Util, View):
                 components_setter = [{
                                         "name":"lbl_add_voucher_idpel",
                                         "category":"label",
-                                        "text": "ID Pelanggan",
+                                        "text": "NOPOL / ID Pelanggan",
                                         "style":self.primary_lbl
                                     },
                                     {
@@ -3798,7 +3801,7 @@ class Main(Util, View):
         # get username login
         uname = self.components["input_uname"].text().upper()
         lbl1 = QLabel("KASIR LOGIN: " + uname)
-        date_lbl = QLabel("DATE: ...")
+        self.date_lbl = QLabel("DATE: ...")
         self.time_lbl = QLabel("TIME: ...")
         
         logout = QPushButton("LOGOUT")
@@ -3886,7 +3889,7 @@ class Main(Util, View):
                     },
                     {
                         "name":"lbl_pos",
-                        "text":f"PK{no_pos}",
+                        "text":f"{no_pos}",
                         "category":"label",
                         "style":self.primary_lbl + "background: #0984e3; padding:5px; color: #fff;"
                     },
@@ -3898,7 +3901,7 @@ class Main(Util, View):
                     },
                     {
                         "name":"lbl_legenda",
-                        "text":"Tekan CTRL+i --> untuk menu legenda/ket.shortcut",
+                        "text":"Tekan CTRL+i --> lihat legenda/ket.shortcut",
                         "category":"label",
                         "style":self.primary_lbl + "background: #0984e3; padding:5px; color: #fff; font-style:italic;"
                     }]
@@ -4023,6 +4026,8 @@ class Main(Util, View):
         # self.stream_url_2 = 'http://192.168.100.69:4747/video'
 
         # ======================= enable / disable cam thread for kasir ===================
+        self.th = None
+        self.th2 = None
         # self.th = playCam1()
         # self.th = playCam1(parent=self.window)
         # self.th.cp.connect(self.setImageKasir) 
@@ -4032,8 +4037,10 @@ class Main(Util, View):
         # self.th2 = playCam2(parent=self.window)
         # self.th2.cp2.connect(self.setImageKasir2) 
         # self.th2.start()
+        # ================================================================================
         
 
+        # ====================== Printer Roller ===========================
         # disable check roller
         # self.cr = checkRoller(parent=self.window)
         # self.cr.cr.connect(self.cRoller)
@@ -4070,7 +4077,7 @@ class Main(Util, View):
         footer_lbl.setAlignment( Qt.AlignCenter )
 
         lbl1.setStyleSheet("background: #fade72; color: #222f3e; font-weight:600; padding: 5px;")
-        date_lbl.setStyleSheet("background: #f8d343; color: #222f3e; font-weight:600; padding: 5px;")
+        self.date_lbl.setStyleSheet("background: #f8d343; color: #222f3e; font-weight:600; padding: 5px;")
         self.time_lbl.setStyleSheet("background: #f7c815; color: #222f3e; font-weight:600; padding: 5px;")
         # lbl3.setStyleSheet("color: #fff;")
 
@@ -4080,7 +4087,7 @@ class Main(Util, View):
         # gd = self.get_date()
         
         current_date = QDate.currentDate().toString('MM/dd/yyyy')
-        date_lbl.setText("TANGGAL: " + current_date)
+        self.date_lbl.setText("TANGGAL: " + current_date)
 
         # get & set time
         timer = QTimer(self.window)
@@ -4089,7 +4096,7 @@ class Main(Util, View):
 
         header_container_lay.setSpacing(0)
         header_container_lay.addWidget(lbl1)
-        header_container_lay.addWidget(date_lbl)
+        header_container_lay.addWidget(self.date_lbl)
         header_container_lay.addWidget(self.time_lbl)
         header_container_lay.addWidget(logout)
         
@@ -4165,26 +4172,31 @@ class Main(Util, View):
         # Update digital clock label
         self.time_lbl.setText("JAM: "+ current_time)
     
+        # update tgl kasir
+        if current_time=="00:00:01":
+            current_date = QDate.currentDate().toString('MM/dd/yyyy')
+            self.date_lbl.setText("TANGGAL: " + current_date)
+
     def kasirLogout(self):
         
         try:
-            
-            ################ close all stream connection ##################
-            # putuskan hubungan dengan cv2 yg berjalan 
-            self.th.capture.release()
-            self.th2.capture.release()
+            print("==> KASIR LOGOUT")   
 
-            # putuskan hubungan dengan signal-slots 
-            self.th.cp.disconnect(self.setImageKasir2)    
-            self.th2.cp2.disconnect(self.setImageKasir2)    
-            
-            # matikan thread
-            self.th.stop()    
-            self.th2.stop()    
-            ##############################################################
-            
-            print("STOP IPCAM 2 THREAD")   
+            if self.th!=None and self.th2!=None:
+                ################ close all stream connection ##################
+                # putuskan hubungan dengan cv2 yg berjalan 
+                self.th.capture.release()
+                self.th2.capture.release()
 
+                # putuskan hubungan dengan signal-slots 
+                self.th.cp.disconnect(self.setImageKasir2)    
+                self.th2.cp2.disconnect(self.setImageKasir2)    
+                
+                # matikan thread
+                self.th.stop()    
+                self.th2.stop()    
+                ##############################################################
+            
             self.closeWindow(self.window)
             self.Login()
         except Exception as e:
