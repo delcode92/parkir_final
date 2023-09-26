@@ -406,20 +406,9 @@ class Controller(Client):
                     self.components["barcode_transaksi"].setText("")
                     self.components["nopol_transaksi"].setFocus()
 
-                    print("BUKA GATE")
+                    print("\nOFFLINE/VOUCHER ==> BUKA GATE\n")
+                    self.runSerial()
                     
-                    ser = serial.Serial('/dev/cu.usbserial-1420', baudrate=9600)
-                    try:
-                        ser.write(b'0')
-                        print("Trigger GERBANG")
-                        time.sleep(2)
-
-                    except Exception as e:
-                        print(str(e))
-
-                    finally:
-                        ser.close()
-
                     return 1
                 
                 # check vehicle type
@@ -695,13 +684,24 @@ class Controller(Client):
             timer = threading.Timer(1.0, self.hideSuccess)
             timer.start()        
     
-    def setPay(self, statOnline=True):
-        arduino = None
+    def runSerial(self):
+        print("Run serial ==> OPEN GATE")
+        ser = serial.Serial(self.configur['SERIAL']['TTY'], baudrate=9600)
+        
         try:
-            arduino = serial.Serial(port='COM4', baudrate=115200, timeout=.1)
-        except:
+            ser.write(b'0')
+            print("Trigger GERBANG")
+            time.sleep(1)
+
+        except Exception as e:
             self.dialogBox(title="Alert", msg="SERIAL BUKA GATE, TIDAK TERSAMBUNG !")
-            return 0
+
+        finally:
+            ser.close()
+
+
+
+    def setPay(self, statOnline=True):
                 
         # get barcode
         barcode = self.components["barcode_transaksi"].text()
@@ -741,16 +741,9 @@ class Controller(Client):
         # set focus back to input barcode
         self.components['nopol_transaksi'].setFocus()
 
-        while True:
-            arduino.write(bytes("1", 'utf-8'))
-            data = arduino.readline()
+        print("\nCASUAL ==> BUKA GATE\n")
+        self.runSerial()
 
-            n = len( data.decode('utf-8') )
-            if n > 0 : break;
-            time.sleep(0.01)
-
-        print("gate open ... ")
-        
             # else:
             #     nopol = nopol.replace(' ', '').lower()
 

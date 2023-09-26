@@ -1199,6 +1199,21 @@ class Main(Util, View):
                     dlg.setIcon(QMessageBox.Information)
                     dlg.exec()
 
+            def runSerial(self):
+                print("Run serial lost ticket ==> OPEN GATE")
+                ser = serial.Serial(self.configur['SERIAL']['TTY'], baudrate=9600)
+                
+                try:
+                    ser.write(b'0')
+                    print("Trigger GERBANG")
+                    time.sleep(1)
+
+                except Exception as e:
+                    self.dialogBox(title="Alert", msg="SERIAL BUKA GATE, TIDAK TERSAMBUNG !")
+
+                finally:
+                    ser.close()
+
             def setPay(self):
                 # logic setpay
                 date_now = datetime.now()
@@ -1215,20 +1230,9 @@ class Main(Util, View):
                     '{date_now}', {int(self.denda)}, 
                     '{self.inpt_nopol.text()}', '{Main.kd_shift}', 'casual', '[IMG_PATH_KELUAR]', true  )""")
                 
-                arduino = serial.Serial(port='COM4', baudrate=115200, timeout=.1)
+                print("\nLOST TICKET ==> BUKA GATE\n")
+                self.runSerial()
 
-                # open gate
-                while True:
-                    arduino.write(bytes("1", 'utf-8'))
-                    data = arduino.readline()
-
-                    n = len( data.decode('utf-8') )
-                    if n > 0 : break;
-                    time.sleep(0.01)
-
-
-                print("from setpay: ==> buka gate")
-                
                 # rest form
                 self.inpt_nopol.setText("")
                 self.jns_kendaraan.setCurrentIndex(0)
@@ -1404,7 +1408,6 @@ class Main(Util, View):
         dlg = QMessageBox(self.window)
         dlg.setWindowTitle( "Keterangan Shortcut" )
         
-        # CTRL + o ==> Open Gate(darurat) \n\n
         # CTRL + l ==> Lost Ticket
 
         dlg.setText(
@@ -1412,6 +1415,7 @@ class Main(Util, View):
         CTRL + i ==> HELP  \n\n
         CTRL + t ==> NOPOL Focus \n\n
         CTRL + p ==> REKAP \n\n
+        CTRL + o ==> OPEN GATE(DARURAT) \n\n
         CTRL + e ==> LOGOUT \n\n
         """)
         
