@@ -4220,7 +4220,7 @@ class Main(Util, View):
        
 
 
-    def AdminDashboard(self):
+    def AdminDashboard(self, user_type=""):
             window_setter = {
                 "title":"Admin Dashboard", 
                 "style":self.win_dashboard
@@ -4321,7 +4321,9 @@ class Main(Util, View):
             left_menu_horizontal = QHBoxLayout()
             left_menu_horizontal.addWidget(self.home_btn)
             left_menu_horizontal.addWidget(self.home_lbl)
-            left_menu_lay.addLayout(left_menu_horizontal)
+
+            if user_type=="admin":
+                left_menu_lay.addLayout(left_menu_horizontal)
 
             self.setMenuClicked(button=self.home_btn, label=self.home_lbl, page="dashboard")
             ###########################################
@@ -4339,7 +4341,9 @@ class Main(Util, View):
             left_menu_horizontal = QHBoxLayout()
             left_menu_horizontal.addWidget(self.rfid_btn)
             left_menu_horizontal.addWidget(self.rfid_lbl)
-            left_menu_lay.addLayout(left_menu_horizontal)
+
+            if user_type=="admin":
+                left_menu_lay.addLayout(left_menu_horizontal)
             
             self.setMenuClicked(button=self.rfid_btn, label=self.rfid_lbl, page="kelola rfid")
             # self.rfid_btn.clicked.connect(lambda: self.windowBarAction("kelola rfid"))
@@ -4359,7 +4363,9 @@ class Main(Util, View):
             left_menu_horizontal = QHBoxLayout()
             left_menu_horizontal.addWidget(self.users_btn)
             left_menu_horizontal.addWidget(self.users_lbl)
-            left_menu_lay.addLayout(left_menu_horizontal)
+
+            if user_type=="admin":
+                left_menu_lay.addLayout(left_menu_horizontal)
 
             self.setMenuClicked(button=self.users_btn, label=self.users_lbl, page="kelola user")
             ###########################################
@@ -4377,7 +4383,9 @@ class Main(Util, View):
             left_menu_horizontal = QHBoxLayout()
             left_menu_horizontal.addWidget(self.kasir_btn)
             left_menu_horizontal.addWidget(self.kasir_lbl)
-            left_menu_lay.addLayout(left_menu_horizontal)
+
+            if user_type=="admin":
+                left_menu_lay.addLayout(left_menu_horizontal)
 
             self.setMenuClicked(button=self.kasir_btn, label=self.kasir_lbl, page="kelola kasir")
             ###########################################
@@ -4395,7 +4403,9 @@ class Main(Util, View):
             left_menu_horizontal = QHBoxLayout()
             left_menu_horizontal.addWidget(self.karcis_btn)
             left_menu_horizontal.addWidget(self.karcis_lbl)
-            left_menu_lay.addLayout(left_menu_horizontal)
+
+            if user_type=="admin":
+                left_menu_lay.addLayout(left_menu_horizontal)
 
             self.setMenuClicked(button=self.karcis_btn, label=self.karcis_lbl, page="setting karcis")
             ###########################################
@@ -4413,7 +4423,9 @@ class Main(Util, View):
             left_menu_horizontal = QHBoxLayout()
             left_menu_horizontal.addWidget(self.tarif_btn)
             left_menu_horizontal.addWidget(self.tarif_lbl)
-            left_menu_lay.addLayout(left_menu_horizontal)
+
+            if user_type=="admin":
+                left_menu_lay.addLayout(left_menu_horizontal)
 
             self.setMenuClicked(button=self.tarif_btn, label=self.tarif_lbl, page="kelola tarif")
             ###########################################
@@ -4431,7 +4443,9 @@ class Main(Util, View):
             left_menu_horizontal = QHBoxLayout()
             left_menu_horizontal.addWidget(self.voucher_btn)
             left_menu_horizontal.addWidget(self.voucher_lbl)
-            left_menu_lay.addLayout(left_menu_horizontal)
+
+            if user_type=="admin":
+                left_menu_lay.addLayout(left_menu_horizontal)
 
             self.setMenuClicked(button=self.voucher_btn, label=self.voucher_lbl, page="kelola voucher")
             ###########################################

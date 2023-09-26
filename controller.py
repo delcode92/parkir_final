@@ -143,9 +143,12 @@ class Controller(Client):
             
             level = q[0][2].lower()
         
-            if level=="admin":
+            if level=="admin" or level=="pegawai":
+                print("user type: ", level)
+                
                 self.closeWindow(arg[0])
-                self.AdminDashboard()
+                self.AdminDashboard(level)
+
             elif level=="kasir":
                 nik = self.exec_query(f"select nik from users where username='{uname}' and password='{passwd}'", "select")
                 self.closeWindow(arg[0])
@@ -612,7 +615,7 @@ class Controller(Client):
 
                  # clear all input
                 self.components["add_uname"].setText("")
-                self.components["add_nik"].setText("")
+                self.components["add_nik_user"].setText("")
                 self.components["add_pass"].setText("")
                 self.components["retype_pass"].setText("")
 
