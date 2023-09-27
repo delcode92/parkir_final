@@ -2445,7 +2445,7 @@ class Controller(Client):
         self.pilih_jns_kendaraan.setCurrentIndex( 2 )
         self.pilih_stat_kendaraan.setCurrentIndex( 2 )
         self.pilih_jns_transaksi.setCurrentIndex( 2 )
-        self.pilih_shift.setCurrentIndex( 5 )
+        self.pilih_shift.setCurrentIndex( 6 )
         self.pilih_tgl1.setDateTime( QDateTime.currentDateTime() )
         self.pilih_tgl2.setDateTime( QDateTime.currentDateTime() )
         self.input_menit1.setValue(0)
@@ -2759,7 +2759,10 @@ class Controller(Client):
         ### active filter
         lap_filter = "FILTER: "
 
-        if start_time!="0" and end_time!="0":
+        if start_time!="0" and end_time!="0" and start_time!="" and end_time!="0":
+            # print("start time ==> ", start_time)
+            # print("end time ==> ", end_time)
+
             time1 = timedelta(int(start_time))
             time2 = timedelta(int(end_time))
 
@@ -3493,7 +3496,8 @@ class Controller(Client):
         lap_filter = "FILTER: "
 
         if cari_data != "": lap_filter = f"{lap_filter} keyword: {cari_data} |"
-        if start_time!="0" and end_time!="0":
+        
+        if start_time!="0" and end_time!="0" and start_time!="" and end_time!="0":
             time1 = timedelta(int(start_time))
             time2 = timedelta(int(end_time))
 
@@ -3511,6 +3515,10 @@ class Controller(Client):
         
         day, month, year = tgl2.split("-")
         parse_tgl2 = f"{day}/{month}/{year}"
+        page_num = 1;
+
+        self.pdf.cell(0, 3, 'Page %s' % page_num, 0, 0, 'R')
+        # self.pdf.ln()
 
         self.pdf.set_font('Arial', 'B', 8)
         self.pdf.cell(w=(self.pw/7)*7, h=self.ch, txt="REKAP PARKIR HARIAN", border=0, ln=1, align='C')
@@ -3527,6 +3535,7 @@ class Controller(Client):
         self.pdf.cell(w=(self.pw/7), h=self.ch, txt="Tarif", border=1, align='C')
         self.pdf.ln()
         
+
         tot_ch = 0
 
         for i in range(len(res)):
@@ -3547,12 +3556,16 @@ class Controller(Client):
 
             if tot_ch == 39*self.ch:
                 tot_ch = 0
-                self.pdf.cell(0, 10, 'Page %s' % self.pdf.page_no(), 0, 0, 'C')
+                page_num +=1
+
                 self.pdf.ln()
+                self.pdf.cell(0, 3, 'Page %s' % page_num, 0, 0, 'R')
+                # self.pdf.cell(0, 8, 'Page %s' % self.pdf.page_no(), 0, 0, 'R')
 
                 self.pdf.set_font('Arial', 'B', 8)
                 self.pdf.cell(w=(self.pw/7)*7, h=self.ch, txt="REKAP PARKIR HARIAN", border=0, ln=1, align='C')
-                self.pdf.cell(w=(self.pw/7)*7, h=self.ch, txt=f"periode: {parse_tgl1} sampai dengan {parse_tgl2}", border=0, align='C', ln=1)
+                self.pdf.cell(w=(self.pw/7)*7, h=self.ch, txt=f"PERIODE: {parse_tgl1} sampai dengan {parse_tgl2}", border=0, align='C', ln=1)
+                self.pdf.cell(w=(self.pw/7)*7, h=self.ch, txt=f"{lap_filter}", border=0, align='C', ln=1)
                 
                 ############################### header ###############################
                 self.pdf.cell(w=(self.pw/7), h=self.ch, txt="Nopol", border=1, align='C')
