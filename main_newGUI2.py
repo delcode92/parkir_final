@@ -4382,7 +4382,9 @@ class Main(Util, View):
         self.time_lbl.setText("JAM: "+ current_time)
     
         # update tgl kasir
-        if current_time=="00:00:01":
+        # if current_time=="24:48:01":
+        if current_time=="00:01:00":
+            print("==> UPDATE TANGGAL")
             current_date = QDate.currentDate().toString('MM/dd/yyyy')
             self.date_lbl.setText("TANGGAL: " + current_date)
 

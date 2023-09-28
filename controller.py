@@ -312,6 +312,13 @@ class Controller(Client):
                 
                 # bypass perhitungan tarif jika barcode dimiliki oleh user yg vouchernya aktif
                 if status_voucher:
+                    q_dt = self.exec_query(f"select datetime from karcis where barcode='{barcode}'", "select")
+                    barcode_time = q_dt[0][0].replace(tzinfo=None)
+                    diff = self.time_now - barcode_time
+                    parking_seconds = int( diff.total_seconds() )
+
+                    self.diff_formatted = str(timedelta(seconds = parking_seconds))
+
                     print("BYPASS TARIF BY VOUCHER")
                     
                     self.components["ket_status"].setText( "VOUCHER" )
@@ -344,13 +351,14 @@ class Controller(Client):
                     return 1
                 
                 elif not query_karcis[0][3]:
+                    print("==> BELUM LUNAS")
                     status_parkir = "BELUM LUNAS"
                     self.components["lbl_ket_karcis"].setText("")
                 
                 self.components["ket_status"].setText( status_parkir )
 
-
                 # get toleransi
+                jns_kendaraan = Controller.jns_pos
                 query = self.exec_query(f"select toleransi, tipe_tarif, rules from tarif where jns_kendaraan='{jns_kendaraan}' or jns_kendaraan='{jns_kendaraan.lower()}'", "select")
                 tolerance = int(query[0][0]) * 60
 
@@ -420,6 +428,9 @@ class Controller(Client):
                 elif parking_seconds < tolerance:
                     self.components["ket_status"].setText("FREE")
                     self.components["tarif_transaksi"].setText("0")
+                
+                # set focused on tarif
+                self.components["tarif_transaksi"].setFocus()
 
                 # set focused on nopol
                 # self.components['nopol_transaksi'].setFocus()
@@ -588,9 +599,10 @@ class Controller(Client):
                 print("==> masuk filter")
                 if stat== "belum lunas (offline)":
                     self.setPay(statOnline=False)
-                elif stat== "casual":
+                elif stat== "belum lunas":
                     self.setPay()
                 elif stat== "voucher":
+                    print("==> BEDA WAKTU 1: ", self.diff_formatted)
                     self.setPay()
                 elif stat== "rfid":
                     self.clearKasirForm()
@@ -771,6 +783,7 @@ class Controller(Client):
 
         
         dt_keluar = self.time_now.strftime('%Y-%m-%d %H:%M:%S')
+        print("==> BEDA WAKTU2: ", self.diff_formatted)
         if self.diff_formatted == "" : self.diff_formatted = "00:00:00"
 
         jns_trans = "voucher" if self.components['ket_status'].text().lower() == "voucher" else "casual"
