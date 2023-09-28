@@ -1284,6 +1284,57 @@ class Main(Util, View):
                 self.jns_kendaraan.setCurrentIndex(0)
                 self.tarif.setText("...")
             
+            def calculate_parking_payment(self, rules, parking_seconds):
+        
+                # get max key:val
+                lastKey,lastValue = rules.popitem()
+                lastKey = int(lastKey)
+                lastValue = int(lastValue)
+                
+                # loop all keys in dictionary
+                for k,v in rules.items():
+
+                    key_rules = int(k)
+                    # val_rules = int(v)
+                
+                    rate_seconds = key_rules * 3600
+                    # rate_price = rules[k];
+
+                    
+                    if parking_seconds <= rate_seconds and parking_seconds != (lastKey*3600) :
+                        each_loop_price = 0
+
+                        for k2,v2 in rules.items():
+                            k2_rules = int(k2)
+                            rp = int(v2)
+                            
+                            # add price until `key`
+                            # rp = rules[k2_rules]
+                            each_loop_price += rp
+                            
+                            if key_rules == k2_rules: break
+                        
+                        total_payment = each_loop_price
+                        return total_payment
+                    
+                    elif parking_seconds > (lastKey*3600):
+                        days = math.floor( parking_seconds / (lastKey*3600) )
+                        total_payment = days * lastValue
+                    
+                        remaining_time = parking_seconds - (days*lastKey*60*60)
+                        
+                        if remaining_time > 0:
+                            
+                            total_payment = total_payment + self.calculate_parking_payment(rules, remaining_time)
+
+                        return total_payment
+                    
+                    elif parking_seconds == (lastKey*3600):
+                        total_payment = (parking_seconds / (lastKey*3600)) * lastValue
+
+                        return total_payment
+    
+
             def getPrice(self):
                 """ get price from lost ticket """
                 # get toleransi
