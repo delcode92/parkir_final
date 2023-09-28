@@ -25,6 +25,7 @@ class logging:
 
 class Controller(Client):
     kd_shift = ""
+    jns_pos = ""
     def __init__(self) -> None:
         # self.Util.__init__(self)
         
@@ -228,6 +229,7 @@ class Controller(Client):
         print("==> from barcode focus")
         nopol = self.components['nopol_transaksi'].text().lower()
 
+        # cek nopol pattern
         if nopol!="" and nopol!="bl" and nopol!="bl ":
             pattern1 = r'^\D+\s+\d{1,4}\s*\D*$'
             pattern2 = r'^\D+\d{1,4}\s*\D*$'
@@ -239,7 +241,9 @@ class Controller(Client):
                 self.components['barcode_transaksi'].setFocus()
             else:
                 self.dialogBox(title="Alert", msg="NOPOL tidak valid !")
-                
+                return 1
+
+
     # def nopolFocus(self):
     #     # print("==> nopolFocus()")
     #     # self.enterBarcode = True
@@ -262,6 +266,7 @@ class Controller(Client):
 
         jns_kendaraan = ""
         status_parkir = ""
+        status_voucher = False
         self.diff_formatted = ""
         self.statGetPrice = True
         try:
@@ -277,22 +282,26 @@ class Controller(Client):
                 # get date now compare to date in voucher
                 self.time_now = datetime.now()
                 date_voucher = datetime.strptime(str(q_voucher[0][0]), "%Y-%m-%d")
+                
+                # print("date_voucher: ", type(date_voucher))
+                # print("self.time_now: ", type(self.time_now))
 
                 if date_voucher > self.time_now:
-                    jk = q_voucher[0][1].lower()
-                    self.components["jns_kendaraan"].setCurrentText(jk)
+                    status_voucher = True
+                    # jk = q_voucher[0][1].lower()
+                    # self.components["jns_kendaraan"].setCurrentText(jk)
 
-                    self.components["ket_status"].setText( "VOUCHER" )
-                    self.components["tarif_transaksi"].setText("0")
+                    # self.components["ket_status"].setText( "VOUCHER" )
+                    # self.components["tarif_transaksi"].setText("0")
                     
                     # set focus to tarif
-                    self.components["tarif_transaksi"].setFocus()
-                    return 1
+                    # self.components["tarif_transaksi"].setFocus()
                 
                 elif date_voucher < self.time_now:
+                # if date_voucher < self.time_now:
                     self.dialogBox(title="voucher status", msg="VOUCHER SUDAH KADALUARSA ==> HITUNG TARIF NORMAL !")
-            
-            
+                    return 1
+                
             # =================== base information ========================
             # get time based on barcode
             barcode = self.components["barcode_transaksi"].text()
@@ -300,15 +309,40 @@ class Controller(Client):
             
             ############### jika ada data bayar ##############
             if int(q_karcis_count[0][0]) > 0:
+                
+                # bypass perhitungan tarif jika barcode dimiliki oleh user yg vouchernya aktif
+                if status_voucher:
+                    print("BYPASS TARIF BY VOUCHER")
+                    
+                    self.components["ket_status"].setText( "VOUCHER" )
+                    self.components["tarif_transaksi"].setText("0")
+                    
+                    # set focus to tarif
+                    self.components["tarif_transaksi"].setFocus()
 
-                query_karcis = self.exec_query(f"select datetime, date_keluar, jenis_kendaraan, status_parkir from karcis where barcode='{barcode}'", "select")
+                    return 1
+
+                query_karcis = self.exec_query(f"select datetime, date_keluar, jenis_kendaraan, status_parkir, tarif from karcis where barcode='{barcode}'", "select")
                
                 jns_kendaraan = query_karcis[0][2].lower() if vehicle is None else vehicle
-                self.components["jns_kendaraan"].setCurrentText( jns_kendaraan )
+                # self.components["jns_kendaraan"].setCurrentText( jns_kendaraan )
                
                 if query_karcis[0][3]:
                     status_parkir = "LUNAS"
-                    self.components["lbl_ket_karcis" ].setText("**karcis sudah pernah terpakai dan lunas")
+                    self.components["ket_status"].setText( status_parkir )
+                    self.components["ket_status"].setStyleSheet( f"""height:30px; 
+                        border:4px solid red;
+                        background-color: #dfe6e9;
+                        color: #000;
+                        font-family: Helvetica;
+                        font-size: 14px; font-weight: 600;""" )
+                    
+                    self.components["tarif_transaksi"].setText(str(query_karcis[0][4]))
+                    self.components["tarif_transaksi"].setFocus()
+                    self.components["lbl_ket_karcis"].setText("**karcis sudah pernah terpakai dan lunas")
+                    
+                    return 1
+                
                 elif not query_karcis[0][3]:
                     status_parkir = "BELUM LUNAS"
                     self.components["lbl_ket_karcis"].setText("")
@@ -394,10 +428,9 @@ class Controller(Client):
 
             elif int(q_karcis_count[0][0]) == 0:
                 """ execute when offline ticket """
-                print("====> masuk sini")
                 self.time_now = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
                 self.time_now = datetime.strptime(self.time_now, '%Y-%m-%d %H:%M:%S')
-
+                
                 if vehicle is None:
                     # self.components["jns_kendaraan"].setFocus()
                     # self.components["jns_kendaraan"].showPopup()
@@ -413,16 +446,18 @@ class Controller(Client):
                 
                 # check vehicle type
                 elif vehicle is not None:
+                    if len(barcode) <= 5:
+                        self.dialogBox("Alert", "Barcode Tidak Valid !")
+                        return 1
 
                     # cek apakah karcis offline ?
                     first_three = barcode[:3]
-                    if first_three == "000":
+                    if first_three == "000" and len(barcode)==9:
                         self.components["ket_status"].setText("BELUM LUNAS (OFFLINE)")
                         
                         # remove 000
                         barcode = barcode.replace('000', "")
                         print("==> offline barcode ", barcode)
-                        
 
                         # # Convert strings to datetime objects
                         self.date_keluar_offline = datetime.now().replace(microsecond=0)
@@ -488,7 +523,13 @@ class Controller(Client):
                         elif parking_seconds < tolerance:
                             self.components["ket_status"].setText("FREE")
                             self.components["tarif_transaksi"].setText("0")
-
+                    else:
+                        print("==> RFID = BARCODE")
+                        self.components["ket_status"].setText( "RFID" )
+                        self.components["tarif_transaksi"].setText("0")
+                        
+                        # set focus to tarif
+                        self.components["tarif_transaksi"].setFocus()
             
         except Exception as e:
             # clear text box if false input barcode
@@ -498,9 +539,18 @@ class Controller(Client):
 
     def clearKasirForm(self):
         self.components["barcode_transaksi"].setText("")
-        self.components["jns_kendaraan"].setCurrentIndex(0)
+        # self.components["jns_kendaraan"].setCurrentIndex(0)
+        # self.components["jns_kendaraan"].setText("")
         self.components["nopol_transaksi"].setText("BL ")
+        
+        self.components["ket_status"].setStyleSheet( f"""height:30px; 
+                        border:1px solid #dfe6e9;
+                        background-color: #dfe6e9;
+                        color: #000;
+                        font-family: Helvetica;
+                        font-size: 14px; font-weight: 600;""" )
         self.components["ket_status"].setText("")
+        
         self.components["tarif_transaksi"].setText("")
         self.components["lbl_ket_karcis"].setText("")
 
@@ -522,7 +572,8 @@ class Controller(Client):
         barcode = self.components['barcode_transaksi'].text()
         nopol = self.components['nopol_transaksi'].text()
         
-        kendaraan = self.components["jns_kendaraan"].currentText()
+        # kendaraan = self.components["jns_kendaraan"].currentText()
+        kendaraan = Controller.jns_pos
         stat = self.components["ket_status"].text()
         stat = stat.lower()
         tarif = self.components["tarif_transaksi"].text()
@@ -537,8 +588,17 @@ class Controller(Client):
                 print("==> masuk filter")
                 if stat== "belum lunas (offline)":
                     self.setPay(statOnline=False)
-                else:
+                elif stat== "casual":
                     self.setPay()
+                elif stat== "voucher":
+                    self.setPay()
+                elif stat== "rfid":
+                    self.clearKasirForm()
+                    self.components['nopol_transaksi'].setFocus()
+                    self.runSerial()
+                elif stat== "lunas":
+                    self.clearKasirForm()
+                    self.components['nopol_transaksi'].setFocus()
                                     
                     
            
@@ -686,19 +746,17 @@ class Controller(Client):
     
     def runSerial(self):
         print("Run serial ==> OPEN GATE")
-        ser = serial.Serial(self.configur['SERIAL']['TTY'], baudrate=9600)
-        
+        ser=None
         try:
+            ser = serial.Serial(self.configur['SERIAL']['TTY'], baudrate=9600)
             ser.write(b'0')
             print("Trigger GERBANG")
             time.sleep(1)
+            ser.close()
 
         except Exception as e:
             self.dialogBox(title="Alert", msg="SERIAL BUKA GATE, TIDAK TERSAMBUNG !")
-
-        finally:
-            ser.close()
-
+            
 
 
     def setPay(self, statOnline=True):
@@ -706,7 +764,8 @@ class Controller(Client):
         # get barcode
         barcode = self.components["barcode_transaksi"].text()
         nopol = self.components["nopol_transaksi"].text()
-        kendaraan = self.components["jns_kendaraan"].currentText().lower()
+        kendaraan = Controller.jns_pos
+        # kendaraan = self.components["jns_kendaraan"].currentText().lower()
         stat = self.components["ket_status"].text().lower()
         tarif = self.components["tarif_transaksi"].text()
 
@@ -721,27 +780,33 @@ class Controller(Client):
         print("==========*******==========")
 
         if statOnline:
-            # pada keadaan online nomor tgl_masuk, gate & jenis kendaraan sudah terisi dahulu, saat dikirim oleh raspi
             kd_shift = Controller.kd_shift
-            self.exec_query(f"update karcis set status_parkir=true, jenis_kendaraan='{kendaraan}', tarif='{tarif}', date_keluar='{dt_keluar}', lama_parkir='{self.diff_formatted}', jns_transaksi='{jns_trans}', kd_shift='{kd_shift}' where barcode='{barcode}'")
+            
+            if jns_trans=="voucher":
+                self.exec_query(f"update karcis set status_parkir=true, jenis_kendaraan='{kendaraan}', tarif='0', nopol='{nopol}', date_keluar='{dt_keluar}', lama_parkir='{self.diff_formatted}', jns_transaksi='{jns_trans}', kd_shift='{kd_shift}' where barcode='{barcode}'")
+                print("\nVOUCHER ==> BUKA GATE\n")
+            else:    
+                # pada keadaan online nomor tgl_masuk, gate & jenis kendaraan sudah terisi dahulu, saat dikirim oleh raspi
+                self.exec_query(f"update karcis set status_parkir=true, jenis_kendaraan='{kendaraan}', tarif='{tarif}', nopol='{nopol}', date_keluar='{dt_keluar}', lama_parkir='{self.diff_formatted}', jns_transaksi='{jns_trans}', kd_shift='{kd_shift}' where barcode='{barcode}'")
+                print("\nCASUAL ==> BUKA GATE\n")
         else:
             date_masuk = str(self.date_masuk_offline)
             date_keluar = str(self.date_keluar_offline)
             lama_parkir = str(self.time_diff_offline)
             kd_shift = Controller.kd_shift
             self.exec_query(f"insert into karcis (barcode, datetime, status_parkir, jenis_kendaraan, date_keluar, lama_parkir, tarif, nopol, kd_shift, jns_transaksi, images_path_keluar) values ('{barcode}', '{date_masuk}', true,'{kendaraan}', '{date_keluar}', '{lama_parkir}', '{tarif}', '{nopol}', '{kd_shift}', '{jns_trans}', '[IMG_PATH_KELUAR]')")
+            print("\nOFFLINE/RFID ==> BUKA GATE\n")
 
         # clear all text box and disable input
         self.clearKasirForm()
         
         # send data to server to open the gate
-        self.logger.debug("open gate ... ")
+        # self.logger.debug("open gate ... ")
         # self.s.sendall( bytes('gate#'+self.ip_raspi+'#end', 'utf-8') )
 
         # set focus back to input barcode
         self.components['nopol_transaksi'].setFocus()
-
-        print("\nCASUAL ==> BUKA GATE\n")
+        
         self.runSerial()
 
             # else:
@@ -812,11 +877,13 @@ class Controller(Client):
 
         lokasi = self.components["add_voucher_lokasi"].text()    
         tarif = self.components["add_voucher_tarif"].text()    
-        masa_berlaku = self.components["add_voucher_masa_berlaku"].text()    
-        jns_kendaraan = self.components["add_voucher_jns_kendaraan"].currentText()
+        masa_berlaku = self.components["add_voucher_masa_berlaku"].text()
+        d,m,y = masa_berlaku.split("/")
+        mb = f"{y}-{m}-{d}"    
+        jns_kendaraan = self.components["add_voucher_jns_kendaraan"].currentText().lower()
 
         # save data
-        query = f"insert into voucher (id_pel, lokasi, tarif, masa_berlaku, jns_kendaraan) values ('{id_pel}', '{lokasi}', '{tarif}', '{masa_berlaku}', '{jns_kendaraan}');"
+        query = f"insert into voucher (id_pel, lokasi, tarif, masa_berlaku, jns_kendaraan) values ('{id_pel}', '{lokasi}', '{tarif}', '{mb}', '{jns_kendaraan}');"
         res = self.exec_query(query)
         
         if res:
@@ -1398,17 +1465,20 @@ class Controller(Client):
         id_pel = self.components["add_voucher_idpel"].text()    
         lokasi = self.components["add_voucher_lokasi"].text()    
         tarif = self.components["add_voucher_tarif"].text()    
-        masa_berlaku = self.components["add_voucher_masa_berlaku"].text()    
-        jns_kendaraan = self.components["add_voucher_jns_kendaraan"].currentText()
+        masa_berlaku = self.components["add_voucher_masa_berlaku"].text()
+        d,m,y = masa_berlaku.split("/")
+        mb = f"{y}-{m}-{d}"    
+        jns_kendaraan = self.components["add_voucher_jns_kendaraan"].currentText().lower()
 
         # run update query
-        self.exec_query(f"update voucher set id_pel='{id_pel}', lokasi='{lokasi}', tarif='{tarif}', masa_berlaku='{masa_berlaku}', jns_kendaraan='{jns_kendaraan}' where id="+id)
+        self.exec_query(f"update voucher set id_pel='{id_pel}', lokasi='{lokasi}', tarif='{tarif}', masa_berlaku='{mb}', jns_kendaraan='{jns_kendaraan}' where id="+id)
         
         # close window edit
         self.win.close()
 
         # reset table value
-        query = self.exec_query("SELECT id, id_pel, lokasi, tarif, masa_berlaku, jns_kendaraan FROM voucher", "SELECT")
+        # query = self.exec_query("SELECT id, id_pel, lokasi, tarif, masa_berlaku, jns_kendaraan FROM voucher", "SELECT")
+        query = self.exec_query("SELECT id, id_pel, lokasi, tarif, TO_CHAR(masa_berlaku::date, 'DD/MM/YYYY') AS masa_berlaku, jns_kendaraan FROM voucher", "SELECT")
         cols = 6
 
         self.fillTable(self.voucher_table, cols, query)
@@ -2445,7 +2515,7 @@ class Controller(Client):
         self.pilih_jns_kendaraan.setCurrentIndex( 2 )
         self.pilih_stat_kendaraan.setCurrentIndex( 2 )
         self.pilih_jns_transaksi.setCurrentIndex( 2 )
-        self.pilih_shift.setCurrentIndex( 5 )
+        self.pilih_shift.setCurrentIndex( 6 )
         self.pilih_tgl1.setDateTime( QDateTime.currentDateTime() )
         self.pilih_tgl2.setDateTime( QDateTime.currentDateTime() )
         self.input_menit1.setValue(0)
@@ -2759,7 +2829,10 @@ class Controller(Client):
         ### active filter
         lap_filter = "FILTER: "
 
-        if start_time!="0" and end_time!="0":
+        if start_time!="0" and end_time!="0" and start_time!="" and end_time!="0":
+            # print("start time ==> ", start_time)
+            # print("end time ==> ", end_time)
+
             time1 = timedelta(int(start_time))
             time2 = timedelta(int(end_time))
 
@@ -3493,7 +3566,8 @@ class Controller(Client):
         lap_filter = "FILTER: "
 
         if cari_data != "": lap_filter = f"{lap_filter} keyword: {cari_data} |"
-        if start_time!="0" and end_time!="0":
+        
+        if start_time!="0" and end_time!="0" and start_time!="" and end_time!="0":
             time1 = timedelta(int(start_time))
             time2 = timedelta(int(end_time))
 
@@ -3511,6 +3585,10 @@ class Controller(Client):
         
         day, month, year = tgl2.split("-")
         parse_tgl2 = f"{day}/{month}/{year}"
+        page_num = 1;
+
+        self.pdf.cell(0, 3, 'Page %s' % page_num, 0, 0, 'R')
+        # self.pdf.ln()
 
         self.pdf.set_font('Arial', 'B', 8)
         self.pdf.cell(w=(self.pw/7)*7, h=self.ch, txt="REKAP PARKIR HARIAN", border=0, ln=1, align='C')
@@ -3527,6 +3605,7 @@ class Controller(Client):
         self.pdf.cell(w=(self.pw/7), h=self.ch, txt="Tarif", border=1, align='C')
         self.pdf.ln()
         
+
         tot_ch = 0
 
         for i in range(len(res)):
@@ -3547,12 +3626,16 @@ class Controller(Client):
 
             if tot_ch == 39*self.ch:
                 tot_ch = 0
-                self.pdf.cell(0, 10, 'Page %s' % self.pdf.page_no(), 0, 0, 'C')
+                page_num +=1
+
                 self.pdf.ln()
+                self.pdf.cell(0, 3, 'Page %s' % page_num, 0, 0, 'R')
+                # self.pdf.cell(0, 8, 'Page %s' % self.pdf.page_no(), 0, 0, 'R')
 
                 self.pdf.set_font('Arial', 'B', 8)
                 self.pdf.cell(w=(self.pw/7)*7, h=self.ch, txt="REKAP PARKIR HARIAN", border=0, ln=1, align='C')
-                self.pdf.cell(w=(self.pw/7)*7, h=self.ch, txt=f"periode: {parse_tgl1} sampai dengan {parse_tgl2}", border=0, align='C', ln=1)
+                self.pdf.cell(w=(self.pw/7)*7, h=self.ch, txt=f"PERIODE: {parse_tgl1} sampai dengan {parse_tgl2}", border=0, align='C', ln=1)
+                self.pdf.cell(w=(self.pw/7)*7, h=self.ch, txt=f"{lap_filter}", border=0, align='C', ln=1)
                 
                 ############################### header ###############################
                 self.pdf.cell(w=(self.pw/7), h=self.ch, txt="Nopol", border=1, align='C')

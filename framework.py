@@ -801,8 +801,8 @@ class Util(Controller ):
 
                     case "date":
                         self.components[i["name"]] = QDateEdit(parent)
-                        self.components[i["name"]].setDisplayFormat("yyyy-MM-dd")
-                        self.components[i["name"]].setMinimumDate(QDate.currentDate())
+                        self.components[i["name"]].setDisplayFormat("dd/MM/yyyy")
+                        # self.components[i["name"]].setMinimumDate(QDate.currentDate())
                         self.components[i["name"]].setCalendarPopup(True)
 
                     case "radiobutton":
@@ -906,8 +906,12 @@ class Util(Controller ):
                                 self.components[i["name"]].setRange(n1,n2)
 
                             case "reg_date":
-                                ds = i["reg_date"].split("-")
-                                self.components[i["name"]].setDate( QDate(int(ds[0]), int(ds[1]), int(ds[2])) )
+                                if i["reg_date"].lower() == "currentdate":
+                                    self.components[i["name"]].setDate(QDate.currentDate())
+                                else:
+                                    ds = i["reg_date"].split("-")
+                                    # self.components[i["name"]].setMinimumDate(QDate(int(ds[0]), int(ds[1]), int(ds[2])))
+                                    self.components[i["name"]].setDate( QDate(int(ds[0]), int(ds[1]), int(ds[2])) )
 
                             case "layout":
                                 self.container_lay = self.CreateLayout ( (i["layout"], False) )

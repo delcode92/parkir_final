@@ -772,12 +772,12 @@ class Main(Util, View):
                     components = [{
                                         "name":"lbl_add_voucher_idpel",
                                         "category":"label",
-                                        "text": "ID Pel",
+                                        "text": "NOPOL/ID Pelanggan",
                                         "style":self.primary_lbl
                                     },
                                     {
                                         "name":"add_voucher_idpel",
-                                        "category":"lineEditInt",
+                                        "category":"lineEdit",
                                         "text":str(res[0][1]),
                                         "style":self.primary_input
                                     },
@@ -796,7 +796,7 @@ class Main(Util, View):
                                     {
                                         "name":"lbl_add_voucher_tarif",
                                         "category":"label",
-                                        "text": "Tarif",
+                                        "text": "Saldo",
                                         "style":self.primary_lbl + margin_top
                                     },
                                     {
@@ -815,7 +815,7 @@ class Main(Util, View):
                                         "name":"add_voucher_masa_berlaku",
                                         "category":"date",
                                         "reg_date":str(res[0][4]),
-                                        "style":self.primary_input
+                                        "style":self.primary_date
                                     },
                                     {
                                         "name":"lbl_add_voucher_jns_kendaraan",
@@ -828,7 +828,7 @@ class Main(Util, View):
                                         "category":"comboBox",
                                         "items":["Motor", "Mobil"],
                                         "selected_item":res[0][5],
-                                        "style":self.primary_combobox
+                                        "style":self.primary_combobox + "font-weight: 500; background:#fff; color:#000;"
                                     },
                                     {
                                         "name":"btn_add_voucher",
@@ -1056,7 +1056,7 @@ class Main(Util, View):
 
         # dialog.exec_()
 
-        import psycopg2, serial, time
+        import psycopg2, serial, time, math
 
         class PopupWindow(QDialog):
             
@@ -1067,7 +1067,7 @@ class Main(Util, View):
                 # super().ini
                 # print(super(), type(super()))
                 
-                self.resize(400, 350)
+                self.resize(400, 500)
                 self.setContentsMargins(15,15,15,15)
 
                 # self.parentWidget().setStyleSheet("margin: 8px;")
@@ -1077,24 +1077,42 @@ class Main(Util, View):
                 layout = QVBoxLayout()
                 self.inpt_nopol = QLineEdit()
                 self.jns_kendaraan = QComboBox()
-                stat = QLabel("LOST TICKET")
+
+                self.jam_masuk_karcis = QLineEdit()
+                self.jam_masuk_karcis.setText("00:00")
+                self.jam_masuk_karcis.setInputMask("HH:HH")
+                self.jam_masuk_karcis.setStyleSheet( View.primary_input + "width: 250px; height: 20px; }" )
+                
+                self.jam_keluar_karcis = QLineEdit()
+                self.jam_keluar_karcis.setText("00:00")
+                self.jam_keluar_karcis.setInputMask("HH:HH")
+                self.jam_keluar_karcis.setStyleSheet( View.primary_input + "width: 250px; height: 20px; }" )
+
+                self.stat = QLabel("LOST TICKET")
                 self.tarif = QLabel("...")
+                j_kend = QLabel(Main.jns_pos)
                 nopol = QLabel("NOPOL:")
+                jam_masuk_lbl = QLabel("JAM MASUK:")
+                jam_keluar_lbl = QLabel("KELUAR:")
                 jns_kend_lbl = QLabel("JENIS KENDARAAN:")
                 stat_lbl = QLabel("STATUS:")
                 tarif_lbl = QLabel("TARIF(Rp):")
 
                 css = "margin-top:15px; font-size:13px; font-weight:500;"
 
-                self.inpt_nopol.setStyleSheet("font-weight:500; font-size: 13px; height: 35px;")
+                self.inpt_nopol.setStyleSheet("font-weight:500; font-size: 13px; height: 45px;")
                 self.jns_kendaraan.setStyleSheet("font-weight:500; font-size: 13px; height: 35px;")
                 nopol.setStyleSheet("font-weight:500;")
+                jam_masuk_lbl.setStyleSheet(css)
+                jam_keluar_lbl.setStyleSheet(css)
                 jns_kend_lbl.setStyleSheet(css)
                 stat_lbl.setStyleSheet(css)
                 tarif_lbl.setStyleSheet(css)
 
-                stat.setStyleSheet("height: 45px; padding:8px; font-weight: 600; font-size:16px; background:#ffeaa7;")
-                self.tarif.setStyleSheet("height: 45px; padding:8px; font-weight: 600; font-size:16px; background:#ffeaa7;")
+                self.stat.setStyleSheet("height: 45px; padding:8px; font-weight: 600; font-size:16px; background:#ffeaa7; color:#000;")
+                self.tarif.setStyleSheet("height: 45px; padding:8px; font-weight: 600; font-size:16px; background:#ffeaa7; color:#000;")
+                j_kend.setStyleSheet("height: 45px; padding:8px; font-weight: 600; font-size:16px; background:#ffeaa7; color:#000;")
+                
                 # list kendaraan
                 list_kendaraan = ["--"]
                 for i in range( len(query) ):
@@ -1102,14 +1120,24 @@ class Main(Util, View):
 
                 self.jns_kendaraan.addItems( list_kendaraan )
 
+                # nopol
                 layout.addWidget( nopol )
                 layout.addWidget(self.inpt_nopol)
                 
+                # jam masuk
+                layout.addWidget( jam_masuk_lbl )
+                layout.addWidget(self.jam_masuk_karcis)
+
+                # jam keluar
+                layout.addWidget( jam_keluar_lbl )
+                layout.addWidget(self.jam_keluar_karcis)
+                
                 layout.addWidget( jns_kend_lbl )
-                layout.addWidget(self.jns_kendaraan)
+                layout.addWidget(j_kend)
+                # layout.addWidget(self.jns_kendaraan)
                 
                 layout.addWidget(stat_lbl)
-                layout.addWidget(stat)
+                layout.addWidget(self.stat)
                
                 layout.addWidget(tarif_lbl)
                 layout.addWidget(self.tarif)
@@ -1118,7 +1146,11 @@ class Main(Util, View):
 
                 # binder
                 EventBinder(self.inpt_nopol, self.nopolEnter)
-                self.jns_kendaraan.activated.connect(self.changeVehicle)
+                EventBinder(self.jam_masuk_karcis, self.setJamKeluar)
+                EventBinder(self.jam_keluar_karcis, self.getPrice)
+                EventBinder(self.tarif, self.setPay)
+
+                # self.jns_kendaraan.activated.connect(self.changeVehicle)
 
                 self.setLayout(layout)
                 self.setWindowModality(Qt.ApplicationModal)
@@ -1181,16 +1213,18 @@ class Main(Util, View):
                 match2 = re.match(pattern2, self.inpt_nopol.text())
 
                 if match1 or match2:
+                    self.jam_masuk_karcis.setFocus()
 
                     # check if all field is filled
-                    if self.inpt_nopol.text() != "" and self.jns_kendaraan.currentText() != "--":
+                    # if self.inpt_nopol.text() != "" and self.jns_kendaraan.currentText() != "--":
                         # PopupWindow.sp(lostTicket=True)
 
-                        self.setPay()
+                        # self.setPay()
                         # super().setpay()
 
-                    elif self.inpt_nopol.text() != "" and self.jns_kendaraan.currentText() == "--":
-                        self.focusDropDown()
+                    # elif self.inpt_nopol.text() != "" and self.jns_kendaraan.currentText() == "--":
+                    #     self.focusDropDown()
+
                 else:
                     dlg = QMessageBox()
             
@@ -1198,27 +1232,39 @@ class Main(Util, View):
                     dlg.setText("Nopol Tidak Valid!")
                     dlg.setIcon(QMessageBox.Information)
                     dlg.exec()
-
+            
             def runSerial(self):
                 print("Run serial lost ticket ==> OPEN GATE")
-                ser = serial.Serial(self.configur['SERIAL']['TTY'], baudrate=9600)
                 
                 try:
+                    ser = serial.Serial(self.configur['SERIAL']['TTY'], baudrate=9600)
                     ser.write(b'0')
                     print("Trigger GERBANG")
                     time.sleep(1)
 
                 except Exception as e:
-                    self.dialogBox(title="Alert", msg="SERIAL BUKA GATE, TIDAK TERSAMBUNG !")
-
-                finally:
-                    ser.close()
+                    self.setStyleSheet('QDialog{background-color: red;}')
+                    self.setWindowTitle("WARNING ! KABEL SERIAL TDK KONEK")
+                
+            def setJamKeluar(self):
+                self.jam_keluar_karcis.setFocus()
 
             def setPay(self):
                 # logic setpay
                 date_now = datetime.now()
                 date_now = date_now.strftime("%Y-%m-%d %H:%M:%S")
+                # x = f"""insert into karcis (
+                #     barcode, gate, 
+                #     status_parkir, jenis_kendaraan, 
+                #     date_keluar, tarif, nopol, 
+                #     kd_shift, jns_transaksi, 
+                #     images_path_keluar, lost_ticket) 
+                #     values('000000', '{Main.no_pos}', true, 
+                #     '{Main.jns_pos}', 
+                #     '{date_now}', {int(self.tarif.text())}, 
+                #     '{self.inpt_nopol.text()}', '{Main.kd_shift}', 'casual', '[IMG_PATH_KELUAR]', true  )"""
                 
+                # print("==>x: ", x)
                 q = self.exec_query(f"""insert into karcis (
                     barcode, gate, 
                     status_parkir, jenis_kendaraan, 
@@ -1226,8 +1272,8 @@ class Main(Util, View):
                     kd_shift, jns_transaksi, 
                     images_path_keluar, lost_ticket) 
                     values('000000', '{Main.no_pos}', true, 
-                    '{self.jns_kendaraan.currentText()}', 
-                    '{date_now}', {int(self.denda)}, 
+                    '{Main.jns_pos}', 
+                    '{date_now}', {int(self.tarif.text())}, 
                     '{self.inpt_nopol.text()}', '{Main.kd_shift}', 'casual', '[IMG_PATH_KELUAR]', true  )""")
                 
                 print("\nLOST TICKET ==> BUKA GATE\n")
@@ -1240,11 +1286,75 @@ class Main(Util, View):
             
             def getPrice(self):
                 """ get price from lost ticket """
+                # get toleransi
+                jns_kendaraan = Main.jns_pos
+                query = self.exec_query(f"select toleransi, tipe_tarif, rules from tarif where jns_kendaraan='{jns_kendaraan}' or jns_kendaraan='{jns_kendaraan.lower()}'", "select")
+                tolerance = int(query[0][0]) * 60
+
+                # parse rules
+                rules = json.loads( query[0][2] )
+
+                j,m = self.jam_masuk_karcis.text().split(":")
+                j2,m2 = self.jam_keluar_karcis.text().split(":")
+
+                jm_masuk_seconds = (int(j)*3600) +  (int(m)*60)
+                jm_keluar_seconds = (int(j2)*3600) +  (int(m2)*60)
+
+                parking_seconds = jm_keluar_seconds - jm_masuk_seconds
+
+                if parking_seconds > tolerance:
+                    
+                    # cek kategori tarif
+                    if query[0][1] == "other":
+                        tot_pay = self.calculate_parking_payment(rules, parking_seconds)
+                        
+                        self.tarif.setText( str(tot_pay) )
+
+                    elif query[0][1] == "flat":
+                        # tarif flat artinya tarif konstan
+                        # get first key:value from json rules
+                        key,value = next( iter(rules.items()) )
+
+                        # set lineEdit
+                        self.tarif.setText( str(value) )
+
+                    
+                    elif query[0][1] == "progresif":
+                        # tarif artinya kelipatan dari jam yg di set
+                        h1,value = next( iter(rules.items()) )
+                        h1 = int(h1)
+                        value = int(value)
+
+                        ph = math.floor(parking_seconds/3600)
+                        h1_seconds = h1 * 60 * 60
+                        final_price = 0
+
+                        if parking_seconds>h1_seconds:
+                            mod = parking_seconds % 3600
+
+                            # exact multiple
+                            if mod==0:
+                                final_price = ph * value 
+                            elif mod>0:
+                                ph =math.floor( ph/h1 )
+                                final_price = ( ph  * value) + value
+                                
+                        elif parking_seconds <= h1_seconds:
+                            final_price = value
+                        
+                        # set lineEdit
+                        self.tarif.setText( str(final_price) )
+                        
+                elif parking_seconds < tolerance:
+                    self.tarif.setText("0")
+
+                self.tarif.setFocus()
+                self.tarif.setStyleSheet("height: 45px; padding:8px; font-weight: 600; font-size:16px; background:#ffeaa7; color:#000; border: 4px solid red;")
                 
-                jns_kendaraan = self.jns_kendaraan.currentText().lower()
-                q_denda = self.exec_query(f"select denda from tarif where jns_kendaraan='{jns_kendaraan}'", "select")
-                self.denda = str( q_denda[0][0] )
-                self.tarif.setText(self.denda)
+                # jns_kendaraan = self.jns_kendaraan.currentText().lower()
+                # q_denda = self.exec_query(f"select denda from tarif where jns_kendaraan='{jns_kendaraan}'", "select")
+                # self.denda = str( q_denda[0][0] )
+                # self.tarif.setText(self.denda)
 
             def changeVehicle(self):
                 self.getPrice()
@@ -1312,13 +1422,16 @@ class Main(Util, View):
                     self.configur = ConfigParser()
                     self.configur.read(ini)
 
-                    vid = int( self.configur['PRINTER_KASIR']['VID'], 16 )
-                    pid = int( self.configur['PRINTER_KASIR']['PID'], 16 )
-                    in_ep = int( self.configur['PRINTER_KASIR']['IN'], 16 )
-                    out_ep = int( self.configur['PRINTER_KASIR']['OUT'], 16 )
+                    self.vid = int( self.configur['PRINTER_KASIR']['VID'], 16 )
+                    self.pid = int( self.configur['PRINTER_KASIR']['PID'], 16 )
+                    self.in_ep = int( self.configur['PRINTER_KASIR']['IN'], 16 )
+                    self.out_ep = int( self.configur['PRINTER_KASIR']['OUT'], 16 )
 
-                    self.print_kasir=Usb(vid, pid, 0, in_ep=in_ep, out_ep=out_ep)
-                    self.print_kasir.set('left', density=0)
+                    # p.set('center', density=0)
+                    # self.print_kasir.text("tester....")
+
+                    # self.print_kasir.cut(mode="FULL")
+                    # self.print_kasir.close() 
 
                 except Exception as e:
                     print(str(e))
@@ -1364,6 +1477,18 @@ class Main(Util, View):
                     return cols,data
 
             def date_enter(self):
+                self.print_kasir=None
+
+                try:
+                    self.print_kasir=Usb(self.vid, self.pid, 0, in_ep=self.in_ep, out_ep=self.out_ep)
+                    self.setStyleSheet('QDialog{background-color: none;}')
+                    self.setWindowTitle("Rekap SHIFT")
+                except Exception as e:
+                    self.setStyleSheet('QDialog{background-color: red;}')
+                    self.setWindowTitle("WARNING ! KABEL PRINTER TDK KONEK")
+                    return 1
+                
+                self.print_kasir.set('left', density=0)
                 
                 # get date 
                 dt_shift = self.date.text()
@@ -1371,34 +1496,53 @@ class Main(Util, View):
 
                 day, month, year = dt_shift.split("/")
                 parse_tgl = f"{year}-{month}-{day}"
-
-                res_motor = self.exec_query(f"select count(*) as jml, SUM(tarif) as total from karcis where cast(datetime as date)='{parse_tgl}' AND (jenis_kendaraan='motor' or jenis_kendaraan='Motor') AND status_parkir=true AND gate='{Main.no_pos}' AND kd_shift='{Main.kd_shift}'", "select")
-                res_mobil = self.exec_query(f"select count(*) as jml, SUM(tarif) as total from karcis where cast(datetime as date)='{parse_tgl}' AND (jenis_kendaraan='mobil' or jenis_kendaraan='Mobil') AND status_parkir=true AND gate='{Main.no_pos}' AND kd_shift='{Main.kd_shift}'", "select")
-
-                j_motor = "0" if (res_motor[0][0] == None or res_motor[0][0] == "") else res_motor[0][0]
-                tot_motor = "0" if (res_motor[0][1] == None or res_motor[0][1] == "") else res_motor[0][1]
-
-                j_mobil = "0" if (res_mobil[0][0] == None or res_mobil[0][0] == "") else res_mobil[0][0]
-                tot_mobil = "0" if (res_mobil[0][1] == None or res_mobil[0][1] == "") else res_mobil[0][1]
                 
+                jns_pos = Main.jns_pos.lower()
+                
+                j_motor=""
+                tot_motor=""
+                j_mobil=""
+                tot_mobil=""
+
+                if jns_pos=="motor":
+                    res_motor = self.exec_query(f"select count(*) as jml, SUM(tarif) as total from karcis where cast(datetime as date)='{parse_tgl}' AND (jenis_kendaraan='motor' or jenis_kendaraan='Motor') AND status_parkir=true AND gate='{Main.no_pos}' AND kd_shift='{Main.kd_shift}'", "select")
+                    j_motor = "0" if (res_motor[0][0] == None or res_motor[0][0] == "") else res_motor[0][0]
+                    tot_motor = "0" if (res_motor[0][1] == None or res_motor[0][1] == "") else res_motor[0][1]
+                
+                elif jns_pos=="mobil":
+                    res_mobil = self.exec_query(f"select count(*) as jml, SUM(tarif) as total from karcis where cast(datetime as date)='{parse_tgl}' AND (jenis_kendaraan='mobil' or jenis_kendaraan='Mobil') AND status_parkir=true AND gate='{Main.no_pos}' AND kd_shift='{Main.kd_shift}'", "select")
+                    j_mobil = "0" if (res_mobil[0][0] == None or res_mobil[0][0] == "") else res_mobil[0][0]
+                    tot_mobil = "0" if (res_mobil[0][1] == None or res_mobil[0][1] == "") else res_mobil[0][1]
+
                 # print rekap based on date and shift and gate
-                
                 self.print_kasir.text("================\n")
-                self.print_kasir.text(f"REKAP KASIR TGL: {dt_shift}\n")
+                self.print_kasir.text("================\n")
+                self.print_kasir.text("================\n")
+
+                self.print_kasir.text(f"REKAP KASIR:\n")
+                self.print_kasir.text(f"TGL: {dt_shift}\n")
+                
+                self.print_kasir.text(f"NAMA: {Main.kasir_uname}\n")  
                 self.print_kasir.text(f"KD.SHIFT: {Main.kd_shift}\n")
+                self.print_kasir.text(f"JNS.POS: {jns_pos}\n")
                 self.print_kasir.text(f"NO POS/GATE: {Main.no_pos}\n")
                 
-                self.print_kasir.text("----------------\n")
-                self.print_kasir.text(f"JUM.MOTOR: {j_motor}\n")
-                self.print_kasir.text(f"TOT.HARGA: {tot_motor}\n")
-                self.print_kasir.text("----------------\n")
-
-                self.print_kasir.text(f"JUM.MOBIL: {j_mobil}\n")
-                self.print_kasir.text(f"TOT.HARGA: {tot_mobil}\n")
+                if jns_pos=="motor":
+                    self.print_kasir.text(f"JUM.MOTOR: {j_motor}\n")
+                    self.print_kasir.text(f"TOT.HARGA: {tot_motor}\n")
+                    
+                elif jns_pos=="mobil":
+                    self.print_kasir.text(f"JUM.MOBIL: {j_mobil}\n")
+                    self.print_kasir.text(f"TOT.HARGA: {tot_mobil}\n")
+                    
+                self.print_kasir.text(f"=================\n")
+                self.print_kasir.text(f"=================\n")
                 self.print_kasir.text(f"=================\n")
 
-                self.print_kasir.cut(mode="FULL")
-                self.print_kasir.close()
+                # self.print_kasir.cut(mode="FULL")
+                
+                # don't close the printer, so it could print multiple time
+                # self.print_kasir.close()
                 
         popup_window = PopupWindow()
         
@@ -1433,6 +1577,8 @@ class Main(Util, View):
         dlg.setText("OPEN GATE KELUAR --> send to microcontroller")
         dlg.setIcon(QMessageBox.Information)
         dlg.exec()
+
+        self.runSerial()
 
     def keyShortcut(self, keyCombination="", targetWidget=None, command=""):
         
@@ -2960,7 +3106,7 @@ class Main(Util, View):
                 action_lay.addWidget(self.row_info_voucher)
                 action_lay.addWidget(row_search)
                 action_lay.addWidget(row_delete)
-                action_lay.addWidget(row_print)
+                # action_lay.addWidget(row_print)
                 action_lay.addStretch(1)
 
 
@@ -2981,7 +3127,8 @@ class Main(Util, View):
                 # create table widget
 
                 # fetch data from DB
-                query = self.exec_query("SELECT id, id_pel, lokasi, tarif, masa_berlaku, jns_kendaraan FROM voucher", "SELECT")
+                # query = self.exec_query("SELECT id, id_pel, lokasi, tarif, masa_berlaku, jns_kendaraan FROM voucher", "SELECT")
+                query = self.exec_query("SELECT id, id_pel, lokasi, tarif, TO_CHAR(masa_berlaku::date, 'DD/MM/YYYY') AS masa_berlaku, jns_kendaraan FROM voucher", "SELECT")
                 rows_count = len(query)
                 cols = 6
 
@@ -3021,7 +3168,7 @@ class Main(Util, View):
                                     },
                                     {
                                         "name":"add_voucher_idpel",
-                                        "category":"lineEditInt",
+                                        "category":"lineEdit",
                                         "style":self.primary_input
                                     },
                                     {
@@ -3055,7 +3202,8 @@ class Main(Util, View):
                                     {
                                         "name":"add_voucher_masa_berlaku",
                                         "category":"date",
-                                        "style":self.primary_input
+                                        "reg_date":"currentDate",
+                                        "style":self.primary_date
                                     },
                                     {
                                         "name":"lbl_add_voucher_jns_kendaraan",
@@ -3067,7 +3215,7 @@ class Main(Util, View):
                                         "name":"add_voucher_jns_kendaraan",
                                         "category":"comboBox",
                                         "items":["Motor", "Mobil"],
-                                        "style":self.primary_combobox
+                                        "style":self.primary_combobox + "font-weight: 500; background:#fff; color:#000;"
                                     },
                                     {
                                         "name":"btn_add_voucher",
@@ -3601,7 +3749,7 @@ class Main(Util, View):
         self.kasir_uname = self.components["input_uname"].text().lower()
         Main.kasir_uname = self.components["input_uname"].text().lower()
 
-        q_kasir = self.exec_query(f"select nik, nama, jm_masuk, jm_keluar, no_pos, shift from kasir where nama='{self.kasir_uname}'","select")
+        q_kasir = self.exec_query(f"select nik, nama, jm_masuk, jm_keluar, no_pos, shift, jns_pos from kasir where nama='{self.kasir_uname}'","select")
         no_pos = q_kasir[0][4]
         no_shift = q_kasir[0][5]
 
@@ -3609,6 +3757,8 @@ class Main(Util, View):
         Main.no_pos = q_kasir[0][4]
         Main.kd_shift = q_kasir[0][5]
         Controller.kd_shift = q_kasir[0][5]
+        Main.jns_pos = q_kasir[0][6]
+        Controller.jns_pos = q_kasir[0][6]
         # ===========================================================
 
         ipcam1 = self.configur[f"gate{no_pos}"]["ipcam1"]
@@ -3939,21 +4089,23 @@ class Main(Util, View):
                         "category":"lineEditInt",
                         "style": self.primary_input + "font-weight: 600;",
                         "event": {
-                            "method_name": self.getPrice
+                            "method_name": self.getPrice,
+                            "arguments": (Main.jns_pos,self)
                         }
                     },                    
-                    {
-                        "name":"lbl_jns_kendaraan",
-                        "text":"JENIS KENDARAAN:",
-                        "category":"label",
-                        "style":self.primary_lbl + "margin-top:20px; color:#f1c40f;"
-                    },
-                    {
-                        "name":"jns_kendaraan",
-                        "category":"comboBox",
-                        "items":list_kendaraan,
-                        "style":self.primary_combobox + "font-weight: 600; background:none; color:#000;"
-                    },
+                    # {
+                    #     "name":"lbl_jns_kendaraan",
+                    #     "text":"JENIS KENDARAAN:",
+                    #     "category":"label",
+                    #     "style":self.primary_lbl + "margin-top:20px; color:#f1c40f;"
+                    # },
+                    # {
+                    #     "name":"jns_kendaraan",
+                    #     "category":"comboBox",
+                    #     "items":list_kendaraan,
+                    #     "style":self.primary_combobox + "font-weight: 600; background:none; color:#000;"
+                    # },
+                    
                     {
                         "name":"lbl_status",
                         "text":"STATUS:",
@@ -3993,7 +4145,7 @@ class Main(Util, View):
         left_vbox.addStretch(1)
         self.CreateComponentLayout(left_content, left_vbox)
         
-        left_vbox.setContentsMargins(8,40,8,0)
+        left_vbox.setContentsMargins(8,0,8,50)
         left_vbox.addStretch(1)
 
         # add components to center
@@ -4005,9 +4157,11 @@ class Main(Util, View):
         # print("==> binder1: ", self.components['nopol_transaksi'], type(self.components['nopol_transaksi']))
         # print("==> binder2: ", self.window, type(self.window))
 
-        EventBinder(self.components['barcode_transaksi'],lambda: self.comboPopup(self.components['jns_kendaraan']), "tab")
+        # EventBinder(self.components['barcode_transaksi'],lambda: self.comboPopup(self.components['jns_kendaraan']), "tab")
         # EventBinder(self.window, self.kasirWindowEnter ) # binder for pay
-        self.components['jns_kendaraan'].activated.connect(self.changeVehicle)
+        
+        # if ==> self.components['jns_kendaraan'] as combobox
+        # self.components['jns_kendaraan'].activated.connect(self.changeVehicle)
 
 
         # add components to right
@@ -4090,7 +4244,7 @@ class Main(Util, View):
         # Get & set current date from server via socket
         # gd = self.get_date()
         
-        current_date = QDate.currentDate().toString('MM/dd/yyyy')
+        current_date = QDate.currentDate().toString('dd/MM/yyyy')
         self.date_lbl.setText("TANGGAL: " + current_date)
 
         # get & set time
