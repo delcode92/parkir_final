@@ -542,7 +542,7 @@ class Controller(Client):
         # self.components["jns_kendaraan"].setCurrentIndex(0)
         # self.components["jns_kendaraan"].setText("")
         self.components["nopol_transaksi"].setText("BL ")
-        
+        # set style
         self.components["ket_status"].setStyleSheet( f"""height:30px; 
                         border:1px solid #dfe6e9;
                         background-color: #dfe6e9;
