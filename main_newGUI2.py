@@ -3801,6 +3801,8 @@ class Main(Util, View):
         Main.kasir_uname = self.components["input_uname"].text().lower()
 
         q_kasir = self.exec_query(f"select nik, nama, jm_masuk, jm_keluar, no_pos, shift, jns_pos from kasir where nama='{self.kasir_uname}'","select")
+        j_msk = q_kasir[0][2]
+        j_klr = q_kasir[0][3]
         no_pos = q_kasir[0][4]
         no_shift = q_kasir[0][5]
 
@@ -4084,7 +4086,7 @@ class Main(Util, View):
                         "name":"lbl_stat",
                         "text":f"{no_shift}",
                         "category":"label",
-                        "style":self.primary_lbl + "background: #0984e3; padding:5px; color: #fff;"
+                        "style":self.primary_lbl + "background: #535c68; padding:5px; color: #fff;"
                     },
                     {
                         "name":"lbl_ket_pos",
@@ -4096,7 +4098,31 @@ class Main(Util, View):
                         "name":"lbl_pos",
                         "text":f"{no_pos}",
                         "category":"label",
-                        "style":self.primary_lbl + "background: #0984e3; padding:5px; color: #fff;"
+                        "style":self.primary_lbl + "background: #535c68; padding:5px; color: #fff;"
+                    },
+                    {
+                        "name":"lbl_jm",
+                        "text":"J.MASUK:",
+                        "category":"label",
+                        "style":self.primary_lbl + "margin-top: 25px;"
+                    },
+                    {
+                        "name":"lbl_jm",
+                        "text":f"{j_msk}",
+                        "category":"label",
+                        "style":self.primary_lbl + "background: #535c68; padding:5px; color: #fff;"
+                    },
+                    {
+                        "name":"lbl_jklr",
+                        "text":"J.KELUAR:",
+                        "category":"label",
+                        "style":self.primary_lbl + "margin-top: 25px;"
+                    },
+                    {
+                        "name":"lbl_jklr",
+                        "text":f"{j_klr}",
+                        "category":"label",
+                        "style":self.primary_lbl + "background: #535c68; padding:5px; color: #fff;"
                     },
                     {
                         "name":"lbl_legenda",
@@ -4196,7 +4222,7 @@ class Main(Util, View):
         left_vbox.addStretch(1)
         self.CreateComponentLayout(left_content, left_vbox)
         
-        left_vbox.setContentsMargins(8,0,8,50)
+        left_vbox.setContentsMargins(8,0,8,0)
         left_vbox.addStretch(1)
 
         # add components to center
